@@ -1,0 +1,4 @@
+Model,Accuracy,Accuracy_Raw,Precision,Recall,F1-Score,ROC-AUC
+Decision Tree,99.12%,0.9912,0.991,0.9809,0.9859,0.995
+Gradient Boosted Trees,99.16%,0.9916,0.9885,0.9847,0.9866,0.9945
+Random Forest,98.90%,0.989,0.9868,0.978,0.9824,0.9961

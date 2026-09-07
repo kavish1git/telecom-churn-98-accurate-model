@@ -1,0 +1,13 @@
+# Data files (large raw CSVs)
+data/*.csv
+!data/*.py
+
+# Python cache & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.streamlit/
+*.log

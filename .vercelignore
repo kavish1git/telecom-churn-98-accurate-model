@@ -1,0 +1,9 @@
+data/
+data/telecom_churn.csv
+data/telecom_churn_refined.csv
+__pycache__/
+*.pyc
+.git/
+.venv/
+.streamlit/
+reports/*.png
