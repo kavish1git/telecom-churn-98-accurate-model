@@ -1,0 +1,101 @@
+customer_id,telecom_partner,gender,city,age,dependents,salary,calls,sms,data_used,tenure,contract_type,payment_method,monthly_bill,satisfaction,support_calls,open_complaint,actual_churn
+1,Airtel,M,Delhi,55,2,126306,136,60,17.4,70,Monthly,UPI,1503,1,5,0,0
+2,BSNL,F,Delhi,62,0,117856,88,46,11.3,33,Monthly,UPI,1581,1,0,0,0
+3,Vodafone,M,Bengaluru,68,1,58304,118,148,1.7,53,Monthly,Auto Pay,1423,1,6,1,1
+4,Airtel,M,Mumbai,71,4,131783,159,79,28.4,22,Monthly,UPI,1980,1,6,1,0
+5,Reliance Jio,F,Chandigarh,25,1,89449,44,117,47.4,21,Monthly,UPI,1500,5,3,0,0
+6,Reliance Jio,M,Kolkata,44,1,102986,199,146,31.7,70,Monthly,Auto Pay,1457,3,4,0,0
+7,Reliance Jio,F,Patiala,44,0,109643,142,19,35.3,70,Prepaid,Auto Pay,692,2,0,0,1
+8,BSNL,F,Jaipur,51,3,40764,232,145,72.4,4,Prepaid,Cash,202,1,5,0,0
+9,Airtel,F,Hyderabad,38,1,128940,247,46,28.2,62,Monthly,UPI,864,3,0,0,0
+10,Vodafone,M,Jaipur,47,2,106027,72,48,41.4,62,Monthly,UPI,640,3,2,1,1
+11,Reliance Jio,M,Lucknow,50,3,58494,170,13,62.8,24,Prepaid,Cash,227,2,4,0,0
+12,BSNL,M,Delhi,45,4,23373,163,142,32.0,55,1 Year,Debit Card,1331,5,5,0,0
+13,Vodafone,M,Patiala,64,0,32161,76,0,50.0,9,Monthly,Debit Card,808,4,7,1,0
+14,Reliance Jio,M,Lucknow,50,4,117532,58,116,69.1,3,Prepaid,Debit Card,1949,4,5,0,0
+15,Reliance Jio,M,Chandigarh,22,3,112658,128,53,76.0,31,1 Year,Cash,1003,3,1,0,0
+16,Reliance Jio,M,Hyderabad,65,3,143633,200,117,12.2,40,Monthly,UPI,273,2,3,0,0
+17,Reliance Jio,F,Mumbai,36,3,120386,61,2,74.2,36,1 Year,Cash,1036,4,1,0,0
+18,Airtel,M,Patiala,21,4,47350,205,143,39.6,24,Monthly,Cash,1368,3,5,0,0
+19,Airtel,F,Patiala,52,3,113008,186,11,21.0,6,2 Year,Debit Card,326,5,4,0,0
+20,Reliance Jio,M,Delhi,66,4,114297,161,73,37.0,66,1 Year,Credit Card,240,4,0,0,0
+21,Airtel,M,Pune,34,3,45351,242,15,78.4,4,1 Year,UPI,1578,3,7,1,1
+22,Reliance Jio,M,Patiala,61,2,108668,141,101,39.7,6,1 Year,Debit Card,239,3,0,0,0
+23,Reliance Jio,F,Bengaluru,45,3,134585,152,116,26.6,51,Prepaid,Credit Card,1132,1,4,1,0
+24,Airtel,F,Hyderabad,47,4,35305,182,7,50.9,62,Prepaid,Credit Card,232,5,5,1,0
+25,Airtel,F,Hyderabad,46,1,95353,234,121,19.6,57,1 Year,Auto Pay,1239,1,6,0,0
+26,Vodafone,F,Bengaluru,63,3,96797,240,91,6.5,66,Monthly,UPI,1899,2,0,1,0
+27,Reliance Jio,M,Kolkata,70,1,85953,94,89,10.7,8,1 Year,Credit Card,1375,1,6,0,1
+28,Airtel,F,Bengaluru,23,2,77458,165,135,10.7,26,Prepaid,Debit Card,1196,1,0,1,1
+29,Airtel,M,Bengaluru,52,0,127112,95,59,12.6,51,Monthly,Auto Pay,1600,4,0,0,0
+30,Reliance Jio,M,Hyderabad,58,2,40358,28,27,11.5,45,Monthly,UPI,786,3,7,0,0
+31,Airtel,F,Jaipur,54,3,23267,93,100,51.4,44,Monthly,Cash,1821,5,3,0,0
+32,Reliance Jio,F,Hyderabad,41,1,102745,205,40,15.0,5,Monthly,Debit Card,1851,1,3,1,1
+33,Reliance Jio,F,Pune,46,1,109588,164,144,28.0,70,Monthly,Credit Card,540,5,2,0,1
+34,BSNL,F,Delhi,66,4,58513,249,140,71.8,26,Monthly,Credit Card,225,1,1,0,0
+35,BSNL,F,Lucknow,63,1,46092,26,45,38.2,68,Monthly,Debit Card,1509,2,4,1,1
+36,Vodafone,F,Jaipur,70,4,31338,193,34,53.6,19,Monthly,Credit Card,844,1,4,0,0
+37,Reliance Jio,F,Mumbai,48,0,20412,160,133,14.2,20,1 Year,Auto Pay,929,4,4,0,0
+38,Reliance Jio,F,Lucknow,52,3,27543,187,81,15.8,12,Prepaid,UPI,366,3,2,0,0
+39,Vodafone,M,Delhi,50,4,125891,189,114,3.7,47,Monthly,Auto Pay,808,2,3,0,0
+40,Airtel,F,Pune,69,0,53496,156,46,13.9,1,Monthly,Credit Card,466,1,5,0,1
+41,Reliance Jio,F,Pune,38,1,80692,197,9,22.6,14,1 Year,Cash,1971,5,6,1,0
+42,Airtel,M,Mumbai,49,1,109084,46,55,14.6,64,Monthly,UPI,1019,2,7,0,0
+43,Reliance Jio,F,Jaipur,40,0,112920,141,29,7.6,38,1 Year,UPI,653,2,6,0,1
+44,BSNL,M,Kolkata,50,1,143555,213,108,10.1,37,2 Year,Debit Card,1104,1,5,0,0
+45,Reliance Jio,M,Bengaluru,20,0,64425,24,4,37.1,11,Prepaid,Debit Card,1907,2,7,1,1
+46,Vodafone,F,Jaipur,35,4,58756,48,118,16.9,3,Prepaid,Cash,1623,5,2,1,1
+47,Reliance Jio,M,Kolkata,42,4,38888,184,32,29.5,33,Monthly,UPI,1120,2,5,0,0
+48,Airtel,M,Pune,59,0,55735,185,117,40.5,6,Prepaid,Cash,1179,5,4,1,1
+49,Airtel,M,Hyderabad,48,4,67295,102,64,55.4,50,Monthly,Debit Card,1698,1,1,0,0
+50,Reliance Jio,M,Delhi,71,4,137474,155,145,3.6,10,2 Year,Debit Card,900,3,0,1,0
+51,BSNL,F,Mumbai,20,4,134352,128,10,64.1,5,Prepaid,UPI,832,2,6,0,0
+52,Vodafone,M,Delhi,57,2,103042,84,84,50.4,23,Prepaid,Auto Pay,1780,3,3,1,1
+53,BSNL,F,Chandigarh,63,3,105999,105,25,7.0,10,Prepaid,Credit Card,1798,5,3,0,0
+54,BSNL,M,Chandigarh,41,1,37955,164,62,69.9,44,1 Year,Debit Card,328,2,2,0,0
+55,Airtel,M,Jaipur,67,2,57841,90,85,73.7,2,Monthly,Debit Card,1218,4,7,1,1
+56,BSNL,M,Pune,49,4,90640,236,58,5.4,13,Prepaid,Auto Pay,1585,3,3,0,0
+57,Reliance Jio,M,Pune,64,0,85510,64,26,22.5,40,2 Year,Auto Pay,1927,2,4,0,0
+58,Reliance Jio,F,Bengaluru,39,4,54911,151,97,64.6,2,1 Year,Cash,1017,3,6,0,0
+59,Reliance Jio,F,Bengaluru,40,3,79031,55,104,60.0,65,Prepaid,Cash,891,2,5,0,0
+60,Reliance Jio,M,Bengaluru,19,4,108726,89,98,15.2,63,Monthly,Credit Card,1514,1,4,0,0
+61,Airtel,M,Hyderabad,44,0,27357,178,128,17.1,17,1 Year,Credit Card,1593,3,2,0,0
+62,Reliance Jio,F,Lucknow,59,3,52479,38,148,30.0,9,Monthly,UPI,992,4,4,0,0
+63,Vodafone,M,Patiala,19,4,81476,208,54,39.0,15,Prepaid,Cash,227,4,5,0,0
+64,Airtel,M,Lucknow,43,3,64811,127,5,49.7,24,Prepaid,Debit Card,347,5,1,1,1
+65,Reliance Jio,M,Delhi,34,1,56208,201,94,29.8,38,Prepaid,Cash,1518,2,2,0,1
+66,Airtel,F,Lucknow,57,1,40150,186,132,37.3,35,1 Year,Debit Card,209,3,1,0,0
+67,Reliance Jio,F,Hyderabad,50,4,91180,110,101,59.9,49,2 Year,Auto Pay,1734,5,0,0,1
+68,Vodafone,F,Delhi,26,3,63286,221,2,3.4,69,Prepaid,Cash,874,3,1,0,0
+69,Reliance Jio,M,Lucknow,60,0,132856,109,22,20.6,62,Prepaid,Auto Pay,1335,2,0,1,1
+70,BSNL,M,Hyderabad,71,4,88450,38,52,57.2,60,Prepaid,Credit Card,385,4,0,0,0
+71,Vodafone,F,Patiala,65,1,41352,58,82,71.7,50,Prepaid,Credit Card,1005,1,1,0,0
+72,Reliance Jio,F,Lucknow,56,1,75069,145,144,41.2,9,1 Year,UPI,942,4,2,1,0
+73,Reliance Jio,F,Hyderabad,46,4,131888,214,84,42.8,34,Prepaid,Cash,1449,5,7,1,1
+74,Vodafone,F,Bengaluru,59,3,130448,192,77,9.0,35,Prepaid,Auto Pay,1532,1,5,0,1
+75,Vodafone,M,Pune,72,1,34397,160,109,36.1,1,Prepaid,Debit Card,296,5,4,1,0
+76,Vodafone,F,Bengaluru,43,3,61555,239,0,42.8,40,Monthly,Credit Card,253,2,4,1,1
+77,Vodafone,M,Pune,52,1,66959,145,50,19.8,64,Monthly,Credit Card,821,1,5,0,0
+78,Reliance Jio,F,Mumbai,67,1,20728,77,3,21.9,22,1 Year,Debit Card,862,5,6,1,0
+79,Airtel,M,Mumbai,42,2,70517,167,112,30.5,60,Prepaid,Auto Pay,956,2,6,0,1
+80,Reliance Jio,F,Mumbai,41,1,139180,239,31,2.1,64,1 Year,Auto Pay,604,4,0,0,0
+81,BSNL,F,Patiala,30,0,86234,219,33,26.1,72,Monthly,Cash,267,2,0,0,0
+82,Airtel,F,Bengaluru,24,4,59954,80,91,17.3,11,Prepaid,Cash,1534,3,2,0,0
+83,Reliance Jio,F,Pune,74,4,67280,146,94,26.5,14,Monthly,UPI,1511,2,3,1,0
+84,Reliance Jio,M,Hyderabad,53,3,99459,124,71,10.0,60,1 Year,Credit Card,1984,2,1,1,1
+85,Reliance Jio,F,Delhi,62,1,36779,186,38,71.3,30,2 Year,Cash,1770,3,0,0,0
+86,Reliance Jio,M,Hyderabad,37,0,83932,20,117,47.7,35,Monthly,Auto Pay,949,5,4,0,0
+87,Vodafone,M,Delhi,18,3,92936,150,2,54.5,37,Monthly,Debit Card,1370,5,2,0,0
+88,Airtel,M,Chandigarh,25,2,44466,224,122,63.2,5,2 Year,Auto Pay,1689,2,1,0,0
+89,BSNL,M,Hyderabad,63,3,56939,111,49,40.1,26,Monthly,Credit Card,1961,3,2,0,0
+90,Airtel,F,Lucknow,33,3,89896,209,11,7.4,62,Prepaid,Auto Pay,1466,3,1,0,0
+91,Reliance Jio,M,Lucknow,31,1,55270,210,53,43.2,4,2 Year,UPI,1713,4,1,1,0
+92,Vodafone,M,Jaipur,29,2,79163,132,132,47.2,42,Prepaid,Credit Card,1156,5,5,0,0
+93,Vodafone,M,Bengaluru,68,3,102637,172,56,59.8,18,Monthly,Debit Card,1729,1,0,1,0
+94,Airtel,F,Delhi,40,0,71934,75,144,34.8,40,Prepaid,UPI,563,5,7,0,0
+95,Vodafone,F,Delhi,32,0,84895,180,111,10.6,72,Prepaid,Credit Card,680,5,2,0,0
+96,Airtel,F,Bengaluru,45,4,52307,185,46,23.1,39,Prepaid,Debit Card,399,4,7,0,0
+97,Airtel,F,Patiala,51,2,74098,136,84,29.4,14,1 Year,UPI,352,1,2,0,0
+98,Airtel,M,Jaipur,19,2,80921,153,141,51.9,32,Prepaid,UPI,1672,4,5,1,1
+99,Reliance Jio,M,Patiala,49,4,25486,77,65,45.9,51,Prepaid,Credit Card,1723,1,4,0,0
+100,Reliance Jio,F,Patiala,40,3,28335,63,74,28.8,38,Prepaid,Cash,271,2,7,1,1

@@ -268,85 +268,65 @@ with tabs[1]:
 # ---------------- TAB 3: Batch CSV Scoring ----------------
 with tabs[2]:
     st.subheader("Batch Customer Base Scoring")
-    st.markdown(
-        "Upload customer CSV files to batch-score accounts using the selected model:"
-    )
+    st.markdown("Upload customer CSV files or load sample test records to batch-score accounts using the 99.12% Accuracy Decision Tree:")
 
-    uploaded_file = st.file_uploader(
-        "Choose a CSV file",
-        type=["csv"],
-        key="batch_upload"
-    )
+    sample_csv_path = os.path.join(os.path.dirname(__file__), "public", "sample_test_base.csv")
 
+    col_btn1, col_btn2 = st.columns([1, 1])
+    with col_btn1:
+        if st.button("⚡ Load 100-Customer Test Base", use_container_width=True, key="load_test_base"):
+            if os.path.exists(sample_csv_path):
+                st.session_state["batch_input_df"] = pd.read_csv(sample_csv_path)
+                st.session_state["scored_df"] = predictor.predict_batch(st.session_state["batch_input_df"])
+                st.rerun()
+
+    uploaded_file = st.file_uploader("Choose a CSV file (or drag & drop here)", type=["csv"], key="batch_file_uploader")
     if uploaded_file is not None:
-        batch_df = pd.read_csv(uploaded_file)
+        st.session_state["batch_input_df"] = pd.read_csv(uploaded_file)
 
-        st.write(f"Uploaded {len(batch_df):,} customer records.")
+    if "batch_input_df" in st.session_state and st.session_state["batch_input_df"] is not None:
+        batch_df = st.session_state["batch_input_df"]
+        st.write(f"Loaded {len(batch_df):,} customer records.")
         st.dataframe(batch_df.head(5), use_container_width=True)
 
-        if st.button(
-            "⚡ Score Customers with Decision Tree",
-            type="primary",
-            key="score_batch"
-        ):
-            try:
-                with st.spinner("Executing Decision Tree scoring..."):
-                    scored_df = predictor.predict_batch(batch_df)
+        if st.button("⚡ Run 99.12% Decision Tree Scoring", type="primary", use_container_width=True, key="score_batch_btn"):
+            with st.spinner("Executing Decision Tree scoring..."):
+                st.session_state["scored_df"] = predictor.predict_batch(batch_df)
 
-                # Save the result so it survives Streamlit reruns.
-                st.session_state["scored_df"] = scored_df
+    if "scored_df" in st.session_state and st.session_state["scored_df"] is not None:
+        scored_df = st.session_state["scored_df"]
+        st.success(f"Batch scoring complete! Evaluated {len(scored_df):,} customer accounts.")
+        
+        # Summary metrics
+        total = len(scored_df)
+        churn_count = int((scored_df["Churn_Prediction"] == 1).sum() if scored_df["Churn_Prediction"].dtype in [int, np.int64, np.int32] else scored_df["Churn_Prediction"].astype(str).str.contains("Churn").sum())
+        retained_count = total - churn_count
+        churn_rate = (churn_count / total) * 100 if total > 0 else 0
 
-                st.success(
-                    f"Successfully processed {len(scored_df):,} accounts."
-                )
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("Total Scored", f"{total:,}")
+        kpi2.metric("Predicted Churners", f"{churn_count:,}", delta=f"{churn_rate:.1f}%", delta_color="inverse")
+        kpi3.metric("Retained Accounts", f"{retained_count:,}")
+        kpi4.metric("Churn Rate", f"{churn_rate:.1f}%")
 
-            except Exception as e:
-                st.error(f"Error during batch scoring: {e}")
+        st.markdown("#### Portfolio Risk Breakdown")
+        st.bar_chart(scored_df["Risk_Tier"].value_counts())
 
-        # Show/export the last successful scoring result.
-        if "scored_df" in st.session_state:
-            scored_df = st.session_state["scored_df"]
+        id_col = "customer_id" if "customer_id" in scored_df.columns else scored_df.columns[0]
+        display_cols = [c for c in [id_col, "telecom_partner", "city", "monthly_bill", "satisfaction", "support_calls", "Churn_Prediction", "Churn_Probability_Pct", "Risk_Tier"] if c in scored_df.columns]
+        if not display_cols:
+            display_cols = scored_df.columns[:8]
+        st.dataframe(scored_df[display_cols].head(25), use_container_width=True)
 
-            st.markdown("#### Portfolio Risk Breakdown")
-            st.bar_chart(scored_df["Risk_Tier"].value_counts())
-
-            id_col = (
-                "customer_id"
-                if "customer_id" in scored_df.columns
-                else scored_df.columns[0]
-            )
-
-            display_cols = [
-                id_col,
-                "Churn_Prediction",
-                "Churn_Probability_Pct",
-                "Risk_Tier"
-            ]
-
-            # Only display columns that actually exist.
-            display_cols = [
-                col for col in display_cols
-                if col in scored_df.columns
-            ]
-
-            st.dataframe(
-                scored_df[display_cols].head(20),
-                use_container_width=True
-            )
-
-            # UTF-8 BOM helps Excel open Indian/customer text correctly.
-            csv_out = scored_df.to_csv(
-                index=False,
-                encoding="utf-8-sig"
-            )
-
-            st.download_button(
-                label="📥 Export Scored CSV",
-                data=csv_out,
-                file_name="telecom_churn_scored.csv",
-                mime="text/csv",
-                key="export_scored_csv"
-            )
+        csv_out = scored_df.to_csv(index=False).encode("utf-8-sig")
+        st.download_button(
+            label="📥 Download Scored Customer Base CSV (telecom_churn_scored_predictions.csv)",
+            data=csv_out,
+            file_name="telecom_churn_scored_predictions.csv",
+            mime="text/csv",
+            use_container_width=True,
+            key="export_scored_csv"
+        )
 
 
 # ---------------- TAB 4: 4 Pillars & Decision Logic ----------------

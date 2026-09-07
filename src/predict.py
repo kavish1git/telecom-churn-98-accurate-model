@@ -36,43 +36,79 @@ class ChurnPredictor:
         else:
             df = raw_input.copy()
 
+        # Helper to search for column aliases case-insensitively
+        def find_col(possible_names, default=None):
+            for name in possible_names:
+                for col in df.columns:
+                    if col.strip().lower().replace('_', '').replace(' ', '') == name.lower().replace('_', '').replace(' ', ''):
+                        return df[col]
+            if default is not None:
+                return pd.Series(default, index=df.index)
+            return None
+
         # 1. Demographics
-        df["age"] = pd.to_numeric(df.get("age", 40), errors="coerce").fillna(40)
-        df["gender"] = df.get("gender", "M").fillna("M")
-        df["num_dependents"] = pd.to_numeric(df.get("num_dependents", 1), errors="coerce").fillna(1)
-        df["city"] = df.get("city", "Delhi").fillna("Delhi")
-        df["telecom_partner"] = df.get("telecom_partner", "Airtel").fillna("Airtel")
+        df["age"] = pd.to_numeric(find_col(["age"], 40), errors="coerce").fillna(40)
+        df["gender"] = find_col(["gender", "sex"], "M").fillna("M")
+        df["num_dependents"] = pd.to_numeric(find_col(["num_dependents", "dependents", "children"], 1), errors="coerce").fillna(1)
+        df["city"] = find_col(["city", "location"], "Delhi").fillna("Delhi")
+        df["telecom_partner"] = find_col(["telecom_partner", "partner", "operator"], "Airtel").fillna("Airtel")
 
         # 2. Usage Patterns
-        df["calls_made"] = pd.to_numeric(df.get("calls_made", 50), errors="coerce").fillna(50).clip(lower=0)
-        df["sms_sent"] = pd.to_numeric(df.get("sms_sent", 20), errors="coerce").fillna(20).clip(lower=0)
-        if "data_used_gb" in df.columns:
-            data_gb = pd.to_numeric(df["data_used_gb"], errors="coerce").fillna(5.0).clip(lower=0)
-        elif "data_used_mb" in df.columns:
-            data_gb = pd.to_numeric(df["data_used_mb"], errors="coerce").fillna(5000).clip(lower=0) / 1024.0
-        elif "data_used" in df.columns:
-            data_gb = pd.to_numeric(df["data_used"], errors="coerce").fillna(5000).clip(lower=0) / 1024.0
+        df["calls_made"] = pd.to_numeric(find_col(["calls_made", "calls"], 50), errors="coerce").fillna(50).clip(lower=0)
+        df["sms_sent"] = pd.to_numeric(find_col(["sms_sent", "sms"], 20), errors="coerce").fillna(20).clip(lower=0)
+        
+        data_col = find_col(["data_used_gb", "data_used", "data_used_mb", "data"])
+        if data_col is not None:
+            raw_data = pd.to_numeric(data_col, errors="coerce").fillna(8.5).clip(lower=0)
+            # If values > 200, assume MB, else GB
+            data_gb = raw_data.apply(lambda v: v / 1024.0 if v > 200 else v)
         else:
-            data_gb = pd.Series(5.0, index=df.index)
+            data_gb = pd.Series(8.5, index=df.index)
         df["data_used_gb"] = np.round(data_gb, 2)
 
-        df["tenure_months"] = pd.to_numeric(df.get("tenure_months", 18.0), errors="coerce").fillna(18.0).clip(lower=0.1)
+        df["tenure_months"] = pd.to_numeric(find_col(["tenure_months", "tenure", "months"], 18.0), errors="coerce").fillna(18.0).clip(lower=0.1)
 
         # 3. Billing Info
-        df["contract_type"] = df.get("contract_type", "Month-to-month").fillna("Month-to-month")
-        df["payment_method"] = df.get("payment_method", "UPI / Auto-Debit").fillna("UPI / Auto-Debit")
-        df["estimated_salary"] = pd.to_numeric(df.get("estimated_salary", 75000), errors="coerce").fillna(75000)
-        df["monthly_charges"] = pd.to_numeric(df.get("monthly_charges", 499.0), errors="coerce").fillna(499.0).clip(lower=0)
-        if "total_charges" not in df.columns:
-            df["total_charges"] = np.round(df["monthly_charges"] * df["tenure_months"], 2)
+        raw_contract = find_col(["contract_type", "contract"], "Month-to-month").astype(str)
+        def map_contract(c):
+            cl = str(c).lower()
+            if "month" in cl or "prepaid" in cl:
+                return "Month-to-month"
+            elif "2" in cl:
+                return "2-Year"
+            elif "1" in cl:
+                return "1-Year"
+            return "Month-to-month"
+        df["contract_type"] = raw_contract.apply(map_contract)
+
+        raw_pm = find_col(["payment_method", "payment"], "UPI / Auto-Debit").astype(str)
+        def map_pm(p):
+            pl = str(p).lower()
+            if "upi" in pl:
+                return "UPI / Auto-Debit"
+            elif "credit" in pl or "auto" in pl:
+                return "Credit Card"
+            elif "cash" in pl:
+                return "Cash / Cheque"
+            elif "debit" in pl or "bank" in pl:
+                return "Net Banking"
+            return "UPI / Auto-Debit"
+        df["payment_method"] = raw_pm.apply(map_pm)
+
+        df["estimated_salary"] = pd.to_numeric(find_col(["estimated_salary", "salary", "income"], 75000), errors="coerce").fillna(75000)
+        df["monthly_charges"] = pd.to_numeric(find_col(["monthly_charges", "monthly_bill", "bill"], 499.0), errors="coerce").fillna(499.0).clip(lower=0)
+        
+        tot_col = find_col(["total_charges", "total_bill"])
+        if tot_col is not None:
+            df["total_charges"] = pd.to_numeric(tot_col, errors="coerce").fillna(df["monthly_charges"] * df["tenure_months"])
         else:
-            df["total_charges"] = pd.to_numeric(df["total_charges"], errors="coerce").fillna(df["monthly_charges"] * df["tenure_months"])
+            df["total_charges"] = np.round(df["monthly_charges"] * df["tenure_months"], 2)
 
         # 4. Service Feedback
-        df["customer_service_calls"] = pd.to_numeric(df.get("customer_service_calls", 1), errors="coerce").fillna(1).clip(lower=0)
-        df["tech_support_tickets"] = pd.to_numeric(df.get("tech_support_tickets", 0), errors="coerce").fillna(0).clip(lower=0)
-        df["satisfaction_rating"] = pd.to_numeric(df.get("satisfaction_rating", 4), errors="coerce").fillna(4).clip(lower=1, upper=5)
-        df["unresolved_complaints"] = pd.to_numeric(df.get("unresolved_complaints", 0), errors="coerce").fillna(0).clip(lower=0, upper=1)
+        df["customer_service_calls"] = pd.to_numeric(find_col(["customer_service_calls", "support_calls", "calls_support"], 1), errors="coerce").fillna(1).clip(lower=0)
+        df["tech_support_tickets"] = pd.to_numeric(find_col(["tech_support_tickets", "tickets"], 0), errors="coerce").fillna(0).clip(lower=0)
+        df["satisfaction_rating"] = pd.to_numeric(find_col(["satisfaction_rating", "satisfaction", "rating"], 4), errors="coerce").fillna(4).clip(lower=1, upper=5)
+        df["unresolved_complaints"] = pd.to_numeric(find_col(["unresolved_complaints", "open_complaint", "complaints"], 0), errors="coerce").fillna(0).clip(lower=0, upper=1)
 
         # 5. Synergy Features
         sat = df["satisfaction_rating"]
