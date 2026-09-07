@@ -268,33 +268,86 @@ with tabs[1]:
 # ---------------- TAB 3: Batch CSV Scoring ----------------
 with tabs[2]:
     st.subheader("Batch Customer Base Scoring")
-    st.markdown("Upload customer CSV files to batch-score accounts using the 99.12% Accuracy Decision Tree:")
+    st.markdown(
+        "Upload customer CSV files to batch-score accounts using the selected model:"
+    )
 
-    uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
+    uploaded_file = st.file_uploader(
+        "Choose a CSV file",
+        type=["csv"],
+        key="batch_upload"
+    )
+
     if uploaded_file is not None:
         batch_df = pd.read_csv(uploaded_file)
+
         st.write(f"Uploaded {len(batch_df):,} customer records.")
-        st.dataframe(batch_df.head(5))
+        st.dataframe(batch_df.head(5), use_container_width=True)
 
-        if st.button("⚡ Score Customers with Decision Tree", type="primary"):
-            with st.spinner("Executing Decision Tree scoring..."):
-                scored_df = predictor.predict_batch(batch_df)
+        if st.button(
+            "⚡ Score Customers with Decision Tree",
+            type="primary",
+            key="score_batch"
+        ):
+            try:
+                with st.spinner("Executing Decision Tree scoring..."):
+                    scored_df = predictor.predict_batch(batch_df)
 
-            st.success("Batch scoring complete!")
+                # Save the result so it survives Streamlit reruns.
+                st.session_state["scored_df"] = scored_df
+
+                st.success(
+                    f"Successfully processed {len(scored_df):,} accounts."
+                )
+
+            except Exception as e:
+                st.error(f"Error during batch scoring: {e}")
+
+        # Show/export the last successful scoring result.
+        if "scored_df" in st.session_state:
+            scored_df = st.session_state["scored_df"]
+
             st.markdown("#### Portfolio Risk Breakdown")
             st.bar_chart(scored_df["Risk_Tier"].value_counts())
 
-            id_col = "customer_id" if "customer_id" in scored_df.columns else scored_df.columns[0]
-            display_cols = [id_col, "Churn_Prediction", "Churn_Probability_Pct", "Risk_Tier"]
-            st.dataframe(scored_df[display_cols].head(20), use_container_width=True)
-
-            csv_out = scored_df.to_csv(index=False).encode("utf-8")
-            st.download_button(
-                label="📥 Download Scored Customer Base CSV",
-                data=csv_out,
-                file_name="telecom_churn_99pct_decision_tree_scored.csv",
-                mime="text/csv"
+            id_col = (
+                "customer_id"
+                if "customer_id" in scored_df.columns
+                else scored_df.columns[0]
             )
+
+            display_cols = [
+                id_col,
+                "Churn_Prediction",
+                "Churn_Probability_Pct",
+                "Risk_Tier"
+            ]
+
+            # Only display columns that actually exist.
+            display_cols = [
+                col for col in display_cols
+                if col in scored_df.columns
+            ]
+
+            st.dataframe(
+                scored_df[display_cols].head(20),
+                use_container_width=True
+            )
+
+            # UTF-8 BOM helps Excel open Indian/customer text correctly.
+            csv_out = scored_df.to_csv(
+                index=False,
+                encoding="utf-8-sig"
+            )
+
+            st.download_button(
+                label="📥 Export Scored CSV",
+                data=csv_out,
+                file_name="telecom_churn_scored.csv",
+                mime="text/csv",
+                key="export_scored_csv"
+            )
+
 
 # ---------------- TAB 4: 4 Pillars & Decision Logic ----------------
 with tabs[3]:
