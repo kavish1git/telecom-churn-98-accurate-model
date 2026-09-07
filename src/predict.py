@@ -8,7 +8,10 @@ import argparse
 import joblib
 import numpy as np
 import pandas as pd
-from preprocessing import NUMERICAL_FEATURES, CATEGORICAL_FEATURES
+try:
+    from preprocessing import NUMERICAL_FEATURES, CATEGORICAL_FEATURES
+except ImportError:
+    from src.preprocessing import NUMERICAL_FEATURES, CATEGORICAL_FEATURES
 
 class ChurnPredictor:
     def __init__(self, model_type="decision_tree", model_path=None):
