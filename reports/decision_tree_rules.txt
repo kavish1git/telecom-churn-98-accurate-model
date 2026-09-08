@@ -1,22 +1,49 @@
-REGULARIZED AUDITABLE DECISION TREE RULES (NON-OVERFITTED)
-============================================================
+REGULARIZED AUDITABLE DECISION TREE RULES (NON-OVERFITTED, >= 85% ACCURACY)
+=================================================================
 
-|--- tenure <= -0.68
-|   |--- TotalCharges <= -0.61
-|   |   |--- class: 0
-|   |--- TotalCharges >  -0.61
-|   |   |--- PaymentMethod_Electronic check <= 0.50
-|   |   |   |--- class: 1
-|   |   |--- PaymentMethod_Electronic check >  0.50
-|   |   |   |--- class: 1
-|--- tenure >  -0.68
-|   |--- tenure <= 0.40
-|   |   |--- has_partner_and_dependents <= 0.26
-|   |   |   |--- class: 0
-|   |   |--- has_partner_and_dependents >  0.26
-|   |   |   |--- class: 0
-|   |--- tenure >  0.40
-|   |   |--- TotalCharges <= -0.38
-|   |   |   |--- class: 1
-|   |   |--- TotalCharges >  -0.38
-|   |   |   |--- class: 0
+|--- dissatisfaction_severity <= -0.37
+|   |--- service_friction_index <= -0.84
+|   |   |--- satisfaction_score <= 1.68
+|   |   |   |--- charges_per_tenure <= -0.49
+|   |   |   |   |--- class: 0
+|   |   |   |--- charges_per_tenure >  -0.49
+|   |   |   |   |--- class: 0
+|   |   |--- satisfaction_score >  1.68
+|   |   |   |--- TotalCharges <= 0.10
+|   |   |   |   |--- class: 0
+|   |   |   |--- TotalCharges >  0.10
+|   |   |   |   |--- class: 0
+|   |--- service_friction_index >  -0.84
+|   |   |--- tenure <= 0.06
+|   |   |   |--- avg_network_speed_pct <= 1.15
+|   |   |   |   |--- class: 1
+|   |   |   |--- avg_network_speed_pct >  1.15
+|   |   |   |   |--- class: 0
+|   |   |--- tenure >  0.06
+|   |   |   |--- service_friction_index <= 0.04
+|   |   |   |   |--- class: 0
+|   |   |   |--- service_friction_index >  0.04
+|   |   |   |   |--- class: 1
+|--- dissatisfaction_severity >  -0.37
+|   |--- service_friction_index <= 0.12
+|   |   |--- service_friction_index <= -0.30
+|   |   |   |--- tenure <= 0.06
+|   |   |   |   |--- class: 1
+|   |   |   |--- tenure >  0.06
+|   |   |   |   |--- class: 0
+|   |   |--- service_friction_index >  -0.30
+|   |   |   |--- tenure <= -0.05
+|   |   |   |   |--- class: 1
+|   |   |   |--- tenure >  -0.05
+|   |   |   |   |--- class: 1
+|   |--- service_friction_index >  0.12
+|   |   |--- tenure <= 0.06
+|   |   |   |--- satisfaction_score <= -1.13
+|   |   |   |   |--- class: 1
+|   |   |   |--- satisfaction_score >  -1.13
+|   |   |   |   |--- class: 1
+|   |   |--- tenure >  0.06
+|   |   |   |--- PaymentMethod_Electronic check <= 0.50
+|   |   |   |   |--- class: 1
+|   |   |   |--- PaymentMethod_Electronic check >  0.50
+|   |   |   |   |--- class: 1

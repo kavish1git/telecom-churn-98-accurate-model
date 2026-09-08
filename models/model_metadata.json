@@ -1,14 +1,20 @@
 {
     "best_dt_params": {
-        "classifier__criterion": "gini",
-        "classifier__max_depth": 3,
-        "classifier__min_samples_leaf": 30
+        "classifier__criterion": "entropy",
+        "classifier__max_depth": 4,
+        "classifier__min_samples_leaf": 35
     },
     "feature_names": [
         "tenure",
         "MonthlyCharges",
         "TotalCharges",
         "SeniorCitizen",
+        "satisfaction_score",
+        "customer_service_calls",
+        "unresolved_complaints",
+        "avg_network_speed_pct",
+        "dissatisfaction_severity",
+        "service_friction_index",
         "charges_per_tenure",
         "is_new_customer",
         "is_long_tenure",
@@ -44,6 +50,12 @@
         "MonthlyCharges",
         "TotalCharges",
         "SeniorCitizen",
+        "satisfaction_score",
+        "customer_service_calls",
+        "unresolved_complaints",
+        "avg_network_speed_pct",
+        "dissatisfaction_severity",
+        "service_friction_index",
         "charges_per_tenure",
         "is_new_customer",
         "is_long_tenure",
@@ -71,5 +83,5 @@
     ],
     "train_samples": 8000,
     "test_samples": 2000,
-    "churn_rate": 0.491875
+    "churn_rate": 0.66175
 }

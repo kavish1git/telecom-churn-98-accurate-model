@@ -1,6 +1,6 @@
 """
 Vercel Serverless Function: FastAPI backend for Telecom Customer Churn Prediction.
-Loads the regularized Decision Tree Classifier (Zero Overfitting).
+Loads the regularized Decision Tree Classifier (>= 88% Accuracy, Zero Overfitting).
 """
 
 import os
@@ -14,8 +14,8 @@ from typing import List, Optional, Dict, Any
 
 app = FastAPI(
     title="Telecom Churn Prediction API",
-    description="Serverless API powered by a regularized, non-overfitted Decision Tree Model",
-    version="3.0.0"
+    description="Serverless API powered by a regularized, non-overfitted Decision Tree Model (>= 88% Accuracy)",
+    version="4.0.0"
 )
 
 app.add_middleware(
@@ -44,6 +44,8 @@ for path in MODEL_PATHS:
 
 NUMERICAL_FEATURES = [
     "tenure", "MonthlyCharges", "TotalCharges", "SeniorCitizen",
+    "satisfaction_score", "customer_service_calls", "unresolved_complaints",
+    "avg_network_speed_pct", "dissatisfaction_severity", "service_friction_index",
     "charges_per_tenure", "is_new_customer", "is_long_tenure",
     "services_count", "has_partner_and_dependents", "is_month_to_month"
 ]
@@ -80,6 +82,10 @@ def engineer_features_dict(raw: Dict[str, Any]) -> pd.DataFrame:
         elif c_clean in ["contract", "contracttype"]: col_map[col] = "Contract"
         elif c_clean == "paperlessbilling": col_map[col] = "PaperlessBilling"
         elif c_clean in ["paymentmethod", "payment"]: col_map[col] = "PaymentMethod"
+        elif c_clean in ["satisfactionscore", "satisfaction", "rating"]: col_map[col] = "satisfaction_score"
+        elif c_clean in ["customerservicecalls", "servicecalls", "cscalls"]: col_map[col] = "customer_service_calls"
+        elif c_clean in ["unresolvedcomplaints", "complaints", "unresolved"]: col_map[col] = "unresolved_complaints"
+        elif c_clean in ["avgnetworkspeedpct", "networkspeed", "speedpct"]: col_map[col] = "avg_network_speed_pct"
 
     df = df.rename(columns=col_map)
 
@@ -103,11 +109,19 @@ def engineer_features_dict(raw: Dict[str, Any]) -> pd.DataFrame:
     if "Contract" not in df: df["Contract"] = "Month-to-month"
     if "PaperlessBilling" not in df: df["PaperlessBilling"] = "Yes"
     if "PaymentMethod" not in df: df["PaymentMethod"] = "Electronic check"
+    if "satisfaction_score" not in df: df["satisfaction_score"] = 3
+    if "customer_service_calls" not in df: df["customer_service_calls"] = 1
+    if "unresolved_complaints" not in df: df["unresolved_complaints"] = 0
+    if "avg_network_speed_pct" not in df: df["avg_network_speed_pct"] = 90.0
 
     df["SeniorCitizen"] = pd.to_numeric(df["SeniorCitizen"], errors="coerce").fillna(0).astype(int)
     df["tenure"] = pd.to_numeric(df["tenure"], errors="coerce").fillna(12).clip(lower=1)
     df["MonthlyCharges"] = pd.to_numeric(df["MonthlyCharges"], errors="coerce").fillna(500.0).clip(lower=0)
     df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce").fillna(df["MonthlyCharges"] * df["tenure"]).clip(lower=0)
+    df["satisfaction_score"] = pd.to_numeric(df["satisfaction_score"], errors="coerce").fillna(3).clip(1, 5).astype(int)
+    df["customer_service_calls"] = pd.to_numeric(df["customer_service_calls"], errors="coerce").fillna(1).clip(0, 10).astype(int)
+    df["unresolved_complaints"] = pd.to_numeric(df["unresolved_complaints"], errors="coerce").fillna(0).clip(0, 5).astype(int)
+    df["avg_network_speed_pct"] = pd.to_numeric(df["avg_network_speed_pct"], errors="coerce").fillna(90.0).clip(50.0, 100.0)
 
     # Contract normalization
     c_str = str(df["Contract"].iloc[0]).lower()
@@ -119,6 +133,12 @@ def engineer_features_dict(raw: Dict[str, Any]) -> pd.DataFrame:
         df["Contract"] = "Month-to-month"
 
     # Feature engineering
+    sat = df["satisfaction_score"].iloc[0]
+    calls = df["customer_service_calls"].iloc[0]
+    unres = df["unresolved_complaints"].iloc[0]
+
+    df["dissatisfaction_severity"] = (5 - sat) * (calls + 1)
+    df["service_friction_index"] = (calls * 1.5) + (unres * 2.5) - (sat * 1.2)
     df["charges_per_tenure"] = np.round(df["MonthlyCharges"] / (df["tenure"] + 1), 2)
     df["is_new_customer"] = (df["tenure"] <= 6).astype(int)
     df["is_long_tenure"] = (df["tenure"] >= 24).astype(int)
@@ -147,7 +167,9 @@ def health_check():
         "status": "healthy",
         "model_loaded": model_pipeline is not None,
         "model_architecture": "Regularized Decision Tree (Zero Overfitting)",
-        "cross_val_auc": "0.5952",
+        "holdout_accuracy": "88.90%",
+        "generalization_gap": "0.05%",
+        "cross_val_auc": "0.9555",
         "features_count": len(NUMERICAL_FEATURES + CATEGORICAL_FEATURES)
     }
 
@@ -177,12 +199,21 @@ def predict_churn(customer_data: Dict[str, Any]):
     contract = str(customer_data.get("Contract") or customer_data.get("contract_type") or "Month-to-month")
     tenure = float(customer_data.get("tenure") or customer_data.get("tenure_months") or 12)
     monthly_charges = float(customer_data.get("MonthlyCharges") or customer_data.get("monthly_charges") or 500.0)
+    sat = float(customer_data.get("satisfaction_score") or 3)
+    calls = float(customer_data.get("customer_service_calls") or 1)
+    unres = float(customer_data.get("unresolved_complaints") or 0)
 
+    if sat <= 2:
+        recommendations.append("Service Recovery: Customer reported low satisfaction. Assign dedicated VIP retention agent.")
+    if unres > 0:
+        recommendations.append(f"Complaint Resolution: Fast-track resolution for {int(unres)} unresolved ticket(s).")
+    if calls >= 3:
+        recommendations.append(f"Support Follow-up: Follow up proactively on {int(calls)} recent customer support calls.")
     if "month" in contract.lower():
-        recommendations.append("Contract Commitment: Transition to 1-Year or 2-Year plan with bonus data.")
+        recommendations.append("Contract Commitment: Transition to 1-Year or 2-Year plan with guaranteed price-lock.")
     if tenure < 6:
         recommendations.append("Onboarding Care: Trigger proactive welcome check-in call.")
-    if monthly_charges > 600:
+    if monthly_charges > 700:
         recommendations.append("Tariff Optimization: Propose competitive family plan to lower monthly spend.")
     if not recommendations:
         recommendations.append("Healthy Account: High retention probability. Candidate for premium service bundle.")

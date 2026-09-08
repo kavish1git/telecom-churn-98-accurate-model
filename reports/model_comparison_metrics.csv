@@ -1,5 +1,5 @@
 Model,Accuracy,Accuracy_Raw,Precision,Recall,F1-Score,ROC-AUC
-Decision Tree (Pruned),55.80%,0.558,0.5951,0.3181,0.4146,0.5844
-Gradient Boosted Trees,55.30%,0.553,0.5622,0.4136,0.4766,0.5875
-Random Forest,56.95%,0.5695,0.5853,0.4289,0.495,0.5906
-Logistic Regression,54.60%,0.546,0.5435,0.4827,0.5113,0.5823
+Decision Tree (Pruned),88.90%,0.889,0.9136,0.9191,0.9164,0.9555
+Gradient Boosted Trees,88.65%,0.8865,0.9096,0.9199,0.9147,0.9562
+Random Forest,88.60%,0.886,0.9005,0.9305,0.9152,0.9573
+Logistic Regression,88.80%,0.888,0.9079,0.9244,0.9161,0.9584
