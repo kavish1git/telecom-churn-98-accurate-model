@@ -1,19 +1,23 @@
 """
-Model Training Script for Maximized Decision Tree Accuracy (Target: 98%+ Accuracy).
-Trains:
-1. Tuned Decision Tree Classifier (Primary Model with 98%+ Target Accuracy)
-2. Gradient Boosted Decision Trees (Tree Boosting Benchmark)
-3. Random Forest Classifier (Tree Ensemble Benchmark)
+Model Training Script for Telecom Customer Churn Prediction.
+Trained on 10,000 customer accounts with strict anti-overfitting regularization:
+1. Pruned & Tuned Decision Tree (Auditable baseline with controlled depth)
+2. Tuned Random Forest (Ensemble with minimum leaf constraints)
+3. Gradient Boosted Decision Trees (Boosting benchmark)
+4. Regularized Logistic Regression (Linear benchmark)
 """
 
 import os
 import json
+import shutil
 import joblib
 import pandas as pd
+import numpy as np
 from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier, export_text
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
-from sklearn.model_selection import GridSearchCV
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import GridSearchCV, StratifiedKFold, cross_val_score
 
 from preprocessing import (
     get_train_test_data,
@@ -27,25 +31,27 @@ def get_feature_names(preprocessor, categorical_features):
     cat_names = cat_encoder.get_feature_names_out(categorical_features).tolist()
     return NUMERICAL_FEATURES + cat_names
 
-def train_models(sample_size=60000, random_state=42):
+def train_models(random_state=42):
     print("=" * 65)
-    print("STEP 1: Loading dataset (Demographics, Usage, Billing, Feedback)...")
+    print("STEP 1: Loading customer dataset (10,000 records)...")
     print("=" * 65)
     X_train, X_test, y_train, y_test = get_train_test_data(
-        sample_size=sample_size,
+        test_size=0.2,
         random_state=random_state
     )
 
     models_dir = os.path.join(os.path.dirname(__file__), "..", "models")
     reports_dir = os.path.join(os.path.dirname(__file__), "..", "reports")
+    api_dir = os.path.join(os.path.dirname(__file__), "..", "api")
     os.makedirs(models_dir, exist_ok=True)
     os.makedirs(reports_dir, exist_ok=True)
+    os.makedirs(api_dir, exist_ok=True)
 
     preprocessor = build_preprocessor()
 
-    # 1. Primary Model: Decision Tree Classifier Tuning
+    # 1. Primary Model: Regularized Decision Tree (Zero Overfitting)
     print("\n" + "=" * 65)
-    print("STEP 2: Tuning Decision Tree Classifier for >= 98% Accuracy...")
+    print("STEP 2: Tuning Pruned Decision Tree with Cross-Validation...")
     print("=" * 65)
     dt_pipeline = Pipeline(steps=[
         ("preprocessor", preprocessor),
@@ -53,17 +59,17 @@ def train_models(sample_size=60000, random_state=42):
     ])
 
     param_grid = {
-        "classifier__max_depth": [8, 9, 10, 11],
-        "classifier__min_samples_leaf": [5, 8, 15],
+        "classifier__max_depth": [3, 4, 5],
+        "classifier__min_samples_leaf": [20, 30, 50],
         "classifier__criterion": ["gini", "entropy"]
     }
 
-    print("Executing GridSearchCV cross-validation...")
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=random_state)
     grid_search = GridSearchCV(
         dt_pipeline,
         param_grid,
-        cv=3,
-        scoring="accuracy",
+        cv=cv,
+        scoring="roc_auc",
         n_jobs=-1,
         verbose=1
     )
@@ -71,38 +77,61 @@ def train_models(sample_size=60000, random_state=42):
 
     best_dt = grid_search.best_estimator_
     print(f"Optimal Decision Tree Parameters: {grid_search.best_params_}")
-    print(f"Optimal Cross-Validation Accuracy: {grid_search.best_score_:.4f} ({grid_search.best_score_*100:.2f}%)")
+    print(f"Optimal 5-Fold CV ROC-AUC: {grid_search.best_score_:.4f}")
 
-    # 2. Benchmark Model: Gradient Boosted Trees
+    # 2. Benchmark Model: Tuned Random Forest
     print("\n" + "=" * 65)
-    print("STEP 3: Training Tree Benchmarks (Gradient Boosted Trees & Random Forest)...")
+    print("STEP 3: Training Random Forest (Ensemble Benchmark)...")
+    print("=" * 65)
+    rf_pipeline = Pipeline(steps=[
+        ("preprocessor", preprocessor),
+        ("classifier", RandomForestClassifier(
+            n_estimators=150,
+            max_depth=6,
+            min_samples_leaf=20,
+            random_state=random_state,
+            n_jobs=-1
+        ))
+    ])
+    rf_pipeline.fit(X_train, y_train)
+    rf_cv_auc = cross_val_score(rf_pipeline, X_train, y_train, cv=cv, scoring="roc_auc").mean()
+    print(f"Random Forest 5-Fold CV ROC-AUC: {rf_cv_auc:.4f}")
+
+    # 3. Benchmark Model: Gradient Boosted Trees
+    print("\n" + "=" * 65)
+    print("STEP 4: Training Gradient Boosted Trees...")
     print("=" * 65)
     gb_pipeline = Pipeline(steps=[
         ("preprocessor", preprocessor),
         ("classifier", GradientBoostingClassifier(
             n_estimators=100,
-            max_depth=5,
+            max_depth=3,
+            learning_rate=0.05,
+            subsample=0.8,
             random_state=random_state
         ))
     ])
-    print("Fitting Gradient Boosted Decision Trees...")
     gb_pipeline.fit(X_train, y_train)
+    gb_cv_auc = cross_val_score(gb_pipeline, X_train, y_train, cv=cv, scoring="roc_auc").mean()
+    print(f"Gradient Boosted 5-Fold CV ROC-AUC: {gb_cv_auc:.4f}")
 
-    # 3. Benchmark Model: Random Forest
-    rf_pipeline = Pipeline(steps=[
+    # 4. Benchmark Model: Logistic Regression
+    print("\n" + "=" * 65)
+    print("STEP 5: Training Regularized Logistic Regression...")
+    print("=" * 65)
+    lr_pipeline = Pipeline(steps=[
         ("preprocessor", preprocessor),
-        ("classifier", RandomForestClassifier(
-            n_estimators=100,
-            max_depth=12,
-            min_samples_leaf=10,
-            random_state=random_state,
-            n_jobs=-1
+        ("classifier", LogisticRegression(
+            C=0.1,
+            max_iter=1000,
+            random_state=random_state
         ))
     ])
-    print("Fitting Random Forest Classifier...")
-    rf_pipeline.fit(X_train, y_train)
+    lr_pipeline.fit(X_train, y_train)
+    lr_cv_auc = cross_val_score(lr_pipeline, X_train, y_train, cv=cv, scoring="roc_auc").mean()
+    print(f"Logistic Regression 5-Fold CV ROC-AUC: {lr_cv_auc:.4f}")
 
-    # 4. Feature Importance Extraction
+    # 5. Feature Importance Extraction
     fitted_preprocessor = best_dt.named_steps["preprocessor"]
     feature_names = get_feature_names(fitted_preprocessor, CATEGORICAL_FEATURES)
     dt_importances = best_dt.named_steps["classifier"].feature_importances_
@@ -114,14 +143,14 @@ def train_models(sample_size=60000, random_state=42):
         "DecisionTree_Importance": dt_importances,
         "GradientBoosted_Importance": gb_importances,
         "RandomForest_Importance": rf_importances
-    }).sort_values(by="DecisionTree_Importance", ascending=False)
+    }).sort_values(by="GradientBoosted_Importance", ascending=False)
 
     importance_path = os.path.join(reports_dir, "feature_importances.csv")
     importance_df.to_csv(importance_path, index=False)
-    print(f"\nTop Churn Drivers (Decision Tree):")
+    print(f"\nTop Predictive Features (Gradient Boosted / Trees):")
     print(importance_df.head(10).to_string(index=False))
 
-    # 5. Export Decision Tree Rules
+    # 6. Export Decision Tree Rules
     tree_rules = export_text(
         best_dt.named_steps["classifier"],
         feature_names=feature_names,
@@ -129,22 +158,31 @@ def train_models(sample_size=60000, random_state=42):
     )
     rules_path = os.path.join(reports_dir, "decision_tree_rules.txt")
     with open(rules_path, "w", encoding="utf-8") as f:
-        f.write("MAXIMIZED ACCURACY DECISION TREE RULES (ACCURACY >= 98%)\n")
+        f.write("REGULARIZED AUDITABLE DECISION TREE RULES (NON-OVERFITTED)\n")
         f.write("=" * 60 + "\n\n")
         f.write(tree_rules)
     print(f"\nTree rules exported -> {rules_path}")
 
-    # 6. Save Model Pipelines
+    # 7. Save Model Pipelines
     dt_model_path = os.path.join(models_dir, "decision_tree_pipeline.joblib")
     gb_model_path = os.path.join(models_dir, "gradient_boosted_pipeline.joblib")
     rf_model_path = os.path.join(models_dir, "random_forest_pipeline.joblib")
+    lr_model_path = os.path.join(models_dir, "logistic_regression_pipeline.joblib")
 
     joblib.dump(best_dt, dt_model_path)
     joblib.dump(gb_pipeline, gb_model_path)
     joblib.dump(rf_pipeline, rf_model_path)
+    joblib.dump(lr_pipeline, lr_model_path)
+
+    # Copy primary model to api/ for Vercel serverless deployment
+    api_model_path = os.path.join(api_dir, "decision_tree_pipeline.joblib")
+    shutil.copyfile(dt_model_path, api_model_path)
+
     print(f"Saved Decision Tree model -> {dt_model_path}")
     print(f"Saved Gradient Boosted model -> {gb_model_path}")
     print(f"Saved Random Forest model -> {rf_model_path}")
+    print(f"Saved Logistic Regression model -> {lr_model_path}")
+    print(f"Updated Vercel Serverless Model -> {api_model_path}")
 
     metadata = {
         "best_dt_params": grid_search.best_params_,
@@ -160,7 +198,7 @@ def train_models(sample_size=60000, random_state=42):
         json.dump(metadata, f, indent=4)
     print(f"Saved Model Metadata -> {meta_path}")
 
-    return best_dt, gb_pipeline, rf_pipeline, X_test, y_test
+    return best_dt, gb_pipeline, rf_pipeline, lr_pipeline, X_test, y_test
 
 if __name__ == "__main__":
-    train_models(sample_size=60000, random_state=42)
+    train_models(random_state=42)

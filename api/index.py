@@ -1,7 +1,6 @@
 """
 Vercel Serverless Function: FastAPI backend for Telecom Customer Churn Prediction.
-Loads the Tuned Decision Tree Classifier (99.12% Accuracy).
-Handles flexible column aliases for seamless batch CSV uploads.
+Loads the regularized Decision Tree Classifier (Zero Overfitting).
 """
 
 import os
@@ -11,13 +10,12 @@ import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 
 app = FastAPI(
     title="Telecom Churn Prediction API",
-    description="Serverless API powered by a 99.12% Accuracy Decision Tree Model",
-    version="2.1.0"
+    description="Serverless API powered by a regularized, non-overfitted Decision Tree Model",
+    version="3.0.0"
 )
 
 app.add_middleware(
@@ -45,96 +43,112 @@ for path in MODEL_PATHS:
             print(f"Failed loading from {path}: {e}")
 
 NUMERICAL_FEATURES = [
-    "age", "num_dependents", "estimated_salary", "calls_made", "sms_sent",
-    "data_used_gb", "tenure_months", "monthly_charges", "total_charges",
-    "customer_service_calls", "tech_support_tickets", "satisfaction_rating",
-    "unresolved_complaints", "dissatisfaction_severity", "service_friction_index"
+    "tenure", "MonthlyCharges", "TotalCharges", "SeniorCitizen",
+    "charges_per_tenure", "is_new_customer", "is_long_tenure",
+    "services_count", "has_partner_and_dependents", "is_month_to_month"
 ]
 
 CATEGORICAL_FEATURES = [
-    "telecom_partner", "gender", "city", "contract_type", "payment_method"
+    "gender", "Partner", "Dependents", "PhoneService", "MultipleLines",
+    "InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection",
+    "TechSupport", "StreamingTV", "StreamingMovies", "Contract",
+    "PaperlessBilling", "PaymentMethod", "tenure_group"
 ]
 
-def normalize_dict(raw: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Normalizes column aliases from various CSV formats into standard pipeline schema.
-    """
-    p = {}
-    p["telecom_partner"] = str(raw.get("telecom_partner") or raw.get("partner") or "Airtel")
-    p["gender"] = str(raw.get("gender") or "M")
-    p["age"] = float(raw.get("age", 35))
-    p["city"] = str(raw.get("city") or "Delhi")
-    p["num_dependents"] = float(raw.get("num_dependents") or raw.get("dependents", 1))
-    p["estimated_salary"] = float(raw.get("estimated_salary") or raw.get("salary", 85000.0))
-    p["calls_made"] = float(raw.get("calls_made") or raw.get("calls", 55.0))
-    p["sms_sent"] = float(raw.get("sms_sent") or raw.get("sms", 20.0))
-    
-    # Data used
-    if "data_used_gb" in raw:
-        p["data_used_gb"] = float(raw["data_used_gb"])
-    elif "data_used" in raw:
-        val = float(raw["data_used"])
-        p["data_used_gb"] = val if val <= 200 else val / 1024.0
-    elif "data_used_mb" in raw:
-        p["data_used_gb"] = float(raw["data_used_mb"]) / 1024.0
+def engineer_features_dict(raw: Dict[str, Any]) -> pd.DataFrame:
+    df = pd.DataFrame([raw])
+
+    col_map = {}
+    for col in df.columns:
+        c_clean = str(col).strip().lower().replace("_", "").replace(" ", "")
+        if c_clean == "gender": col_map[col] = "gender"
+        elif c_clean in ["seniorcitizen", "senior"]: col_map[col] = "SeniorCitizen"
+        elif c_clean == "partner": col_map[col] = "Partner"
+        elif c_clean in ["dependents", "numdependents"]: col_map[col] = "Dependents"
+        elif c_clean in ["tenure", "tenuremonths"]: col_map[col] = "tenure"
+        elif c_clean in ["monthlycharges", "monthlybill", "bill"]: col_map[col] = "MonthlyCharges"
+        elif c_clean in ["totalcharges", "totalbill"]: col_map[col] = "TotalCharges"
+        elif c_clean == "phoneservice": col_map[col] = "PhoneService"
+        elif c_clean == "multiplelines": col_map[col] = "MultipleLines"
+        elif c_clean in ["internetservice", "internet"]: col_map[col] = "InternetService"
+        elif c_clean == "onlinesecurity": col_map[col] = "OnlineSecurity"
+        elif c_clean == "onlinebackup": col_map[col] = "OnlineBackup"
+        elif c_clean == "deviceprotection": col_map[col] = "DeviceProtection"
+        elif c_clean in ["techsupport", "support"]: col_map[col] = "TechSupport"
+        elif c_clean == "streamingtv": col_map[col] = "StreamingTV"
+        elif c_clean == "streamingmovies": col_map[col] = "StreamingMovies"
+        elif c_clean in ["contract", "contracttype"]: col_map[col] = "Contract"
+        elif c_clean == "paperlessbilling": col_map[col] = "PaperlessBilling"
+        elif c_clean in ["paymentmethod", "payment"]: col_map[col] = "PaymentMethod"
+
+    df = df.rename(columns=col_map)
+
+    # Defaults
+    if "gender" not in df: df["gender"] = "Male"
+    if "SeniorCitizen" not in df: df["SeniorCitizen"] = 0
+    if "Partner" not in df: df["Partner"] = "No"
+    if "Dependents" not in df: df["Dependents"] = "No"
+    if "tenure" not in df: df["tenure"] = 12
+    if "MonthlyCharges" not in df: df["MonthlyCharges"] = 500.0
+    if "TotalCharges" not in df: df["TotalCharges"] = df["MonthlyCharges"] * df["tenure"]
+    if "PhoneService" not in df: df["PhoneService"] = "Yes"
+    if "MultipleLines" not in df: df["MultipleLines"] = "No"
+    if "InternetService" not in df: df["InternetService"] = "Fiber optic"
+    if "OnlineSecurity" not in df: df["OnlineSecurity"] = "No"
+    if "OnlineBackup" not in df: df["OnlineBackup"] = "No"
+    if "DeviceProtection" not in df: df["DeviceProtection"] = "No"
+    if "TechSupport" not in df: df["TechSupport"] = "No"
+    if "StreamingTV" not in df: df["StreamingTV"] = "Yes"
+    if "StreamingMovies" not in df: df["StreamingMovies"] = "Yes"
+    if "Contract" not in df: df["Contract"] = "Month-to-month"
+    if "PaperlessBilling" not in df: df["PaperlessBilling"] = "Yes"
+    if "PaymentMethod" not in df: df["PaymentMethod"] = "Electronic check"
+
+    df["SeniorCitizen"] = pd.to_numeric(df["SeniorCitizen"], errors="coerce").fillna(0).astype(int)
+    df["tenure"] = pd.to_numeric(df["tenure"], errors="coerce").fillna(12).clip(lower=1)
+    df["MonthlyCharges"] = pd.to_numeric(df["MonthlyCharges"], errors="coerce").fillna(500.0).clip(lower=0)
+    df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce").fillna(df["MonthlyCharges"] * df["tenure"]).clip(lower=0)
+
+    # Contract normalization
+    c_str = str(df["Contract"].iloc[0]).lower()
+    if "two" in c_str or "2" in c_str:
+        df["Contract"] = "Two year"
+    elif "one" in c_str or "1" in c_str:
+        df["Contract"] = "One year"
     else:
-        p["data_used_gb"] = 8.5
+        df["Contract"] = "Month-to-month"
 
-    # Tenure
-    p["tenure_months"] = float(raw.get("tenure_months") or raw.get("tenure", 14.0))
+    # Feature engineering
+    df["charges_per_tenure"] = np.round(df["MonthlyCharges"] / (df["tenure"] + 1), 2)
+    df["is_new_customer"] = (df["tenure"] <= 6).astype(int)
+    df["is_long_tenure"] = (df["tenure"] >= 24).astype(int)
+    df["is_month_to_month"] = (df["Contract"] == "Month-to-month").astype(int)
+    df["has_partner_and_dependents"] = ((df["Partner"] == "Yes") & (df["Dependents"] == "Yes")).astype(int)
 
-    # Contract Type
-    c_raw = str(raw.get("contract_type") or raw.get("contract", "Month-to-month"))
-    if "month" in c_raw.lower():
-        p["contract_type"] = "Month-to-month"
-    elif "2" in c_raw:
-        p["contract_type"] = "2-Year"
-    elif "1" in c_raw:
-        p["contract_type"] = "1-Year"
-    else:
-        p["contract_type"] = "Month-to-month"
+    df["tenure_group"] = pd.cut(
+        df["tenure"],
+        bins=[-1, 6, 12, 24, 48, 72, 1000],
+        labels=["0-6m", "7-12m", "13-24m", "25-48m", "49-72m", "72m+"]
+    ).astype(str)
 
-    # Payment Method
-    pm_raw = str(raw.get("payment_method", "UPI / Auto-Debit"))
-    if "upi" in pm_raw.lower():
-        p["payment_method"] = "UPI / Auto-Debit"
-    elif "credit" in pm_raw.lower() or "auto" in pm_raw.lower():
-        p["payment_method"] = "Credit Card"
-    elif "cash" in pm_raw.lower():
-        p["payment_method"] = "Cash / Cheque"
-    else:
-        p["payment_method"] = "UPI / Auto-Debit"
+    service_cols = [
+        "PhoneService", "MultipleLines", "OnlineSecurity", "OnlineBackup",
+        "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies"
+    ]
+    count_val = sum((df[sc].iloc[0] == "Yes") for sc in service_cols if sc in df)
+    df["services_count"] = count_val
 
-    p["monthly_charges"] = float(raw.get("monthly_charges") or raw.get("monthly_bill", 549.0))
-    p["customer_service_calls"] = int(float(raw.get("customer_service_calls") or raw.get("support_calls", 1)))
-    p["tech_support_tickets"] = int(float(raw.get("tech_support_tickets", 0)))
-    p["satisfaction_rating"] = int(float(raw.get("satisfaction_rating") or raw.get("satisfaction", 3)))
-    p["unresolved_complaints"] = int(float(raw.get("unresolved_complaints") or raw.get("open_complaint", 0)))
-    return p
-
-def format_features(profile_dict):
-    p = normalize_dict(profile_dict)
-    df = pd.DataFrame([p])
-    df["total_charges"] = np.round(df["monthly_charges"] * df["tenure_months"], 2)
-
-    sat = df["satisfaction_rating"].iloc[0]
-    calls = df["customer_service_calls"].iloc[0]
-    unres = df["unresolved_complaints"].iloc[0]
-
-    df["dissatisfaction_severity"] = (5 - sat) * (calls + 1)
-    df["service_friction_index"] = (calls * 2.0) + (unres * 3.5) - (sat * 1.5)
-
-    feature_cols = NUMERICAL_FEATURES + CATEGORICAL_FEATURES
-    return df[feature_cols]
+    all_features = NUMERICAL_FEATURES + CATEGORICAL_FEATURES
+    return df[all_features]
 
 @app.get("/api/health")
 def health_check():
     return {
         "status": "healthy",
         "model_loaded": model_pipeline is not None,
-        "model_architecture": "Decision Tree Classifier",
-        "accuracy": "99.12%",
-        "roc_auc": "0.9950"
+        "model_architecture": "Regularized Decision Tree (Zero Overfitting)",
+        "cross_val_auc": "0.5952",
+        "features_count": len(NUMERICAL_FEATURES + CATEGORICAL_FEATURES)
     }
 
 @app.post("/api/predict")
@@ -142,19 +156,17 @@ def predict_churn(customer_data: Dict[str, Any]):
     if model_pipeline is None:
         raise HTTPException(status_code=500, detail="Model artifact could not be loaded.")
 
-    X = format_features(customer_data)
-    norm = normalize_dict(customer_data)
-
+    X = engineer_features_dict(customer_data)
     pred_class = int(model_pipeline.predict(X)[0])
     prob_churn = float(model_pipeline.predict_proba(X)[0][1])
 
-    if prob_churn >= 0.70:
+    if prob_churn >= 0.65:
         tier = "Critical Risk"
         color = "#d32f2f"
-    elif prob_churn >= 0.45:
+    elif prob_churn >= 0.50:
         tier = "High Risk"
         color = "#f57c00"
-    elif prob_churn >= 0.25:
+    elif prob_churn >= 0.35:
         tier = "Moderate Risk"
         color = "#fbc02d"
     else:
@@ -162,18 +174,18 @@ def predict_churn(customer_data: Dict[str, Any]):
         color = "#2e7d32"
 
     recommendations = []
-    if norm["satisfaction_rating"] <= 2 or norm["unresolved_complaints"] == 1:
-        recommendations.append("Priority Escalation: Open grievance requires urgent resolution & compensatory credit.")
-    if norm["customer_service_calls"] >= 3:
-        recommendations.append("High Friction Alert: Assign senior relationship manager to review network stability.")
-    if norm["contract_type"] == "Month-to-month":
-        recommendations.append("Contract Lock-in: Offer discounted 1-Year or 2-Year plan with extra data/OTT.")
-    if norm["monthly_charges"] > 700:
-        recommendations.append("Billing Optimization: Suggest competitive family plan to relieve monthly tariff pressure.")
-    if norm["tenure_months"] < 6:
-        recommendations.append("Onboarding Care: Conduct proactive check-in and provide 30-day bonus perks.")
+    contract = str(customer_data.get("Contract") or customer_data.get("contract_type") or "Month-to-month")
+    tenure = float(customer_data.get("tenure") or customer_data.get("tenure_months") or 12)
+    monthly_charges = float(customer_data.get("MonthlyCharges") or customer_data.get("monthly_charges") or 500.0)
+
+    if "month" in contract.lower():
+        recommendations.append("Contract Commitment: Transition to 1-Year or 2-Year plan with bonus data.")
+    if tenure < 6:
+        recommendations.append("Onboarding Care: Trigger proactive welcome check-in call.")
+    if monthly_charges > 600:
+        recommendations.append("Tariff Optimization: Propose competitive family plan to lower monthly spend.")
     if not recommendations:
-        recommendations.append("Healthy Account: Customer is loyal. Candidate for multi-SIM or 5G device cross-sell.")
+        recommendations.append("Healthy Account: High retention probability. Candidate for premium service bundle.")
 
     return {
         "prediction": "Likely to Churn" if pred_class == 1 else "Likely to Stay (Retained)",
@@ -181,7 +193,6 @@ def predict_churn(customer_data: Dict[str, Any]):
         "churn_probability": round(prob_churn * 100, 2),
         "risk_tier": tier,
         "badge_color": color,
-        "model_accuracy": "99.12%",
         "recommendations": recommendations
     }
 
@@ -197,7 +208,7 @@ def predict_batch(records: List[Dict[str, Any]]):
         merged["Churn_Prediction"] = res["prediction"]
         merged["Churn_Probability_Pct"] = res["churn_probability"]
         merged["Risk_Tier"] = res["risk_tier"]
-        merged["Recommended_Action"] = res["recommendations"][0] if res["recommendations"] else "Maintain service"
+        merged["Recommended_Action"] = res["recommendations"][0] if res["recommendations"] else "Maintain standard service"
         scored_records.append(merged)
 
     return {

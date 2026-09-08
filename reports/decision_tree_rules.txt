@@ -1,88 +1,22 @@
-MAXIMIZED ACCURACY DECISION TREE RULES (ACCURACY >= 98%)
+REGULARIZED AUDITABLE DECISION TREE RULES (NON-OVERFITTED)
 ============================================================
 
-|--- service_friction_index <= -0.23
-|   |--- dissatisfaction_severity <= -0.54
-|   |   |--- data_used_gb <= 1.96
-|   |   |   |--- sms_sent <= -1.19
-|   |   |   |   |--- total_charges <= -1.53
-|   |   |   |   |   |--- truncated branch of depth 5
-|   |   |   |   |--- total_charges >  -1.53
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |--- sms_sent >  -1.19
-|   |   |   |   |--- estimated_salary <= 0.98
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |   |--- estimated_salary >  0.98
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |--- data_used_gb >  1.96
-|   |   |   |--- tech_support_tickets <= -0.25
-|   |   |   |   |--- class: 0
-|   |   |   |--- tech_support_tickets >  -0.25
-|   |   |   |   |--- class: 0
-|   |--- dissatisfaction_severity >  -0.54
-|   |   |--- tenure_months <= -0.27
-|   |   |   |--- contract_type_Month-to-month <= 0.50
-|   |   |   |   |--- total_charges <= -0.94
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |   |--- total_charges >  -0.94
-|   |   |   |   |   |--- truncated branch of depth 3
-|   |   |   |--- contract_type_Month-to-month >  0.50
-|   |   |   |   |--- service_friction_index <= -0.40
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |   |--- service_friction_index >  -0.40
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |--- tenure_months >  -0.27
-|   |   |   |--- tenure_months <= -0.09
-|   |   |   |   |--- monthly_charges <= 0.92
-|   |   |   |   |   |--- truncated branch of depth 5
-|   |   |   |   |--- monthly_charges >  0.92
-|   |   |   |   |   |--- truncated branch of depth 3
-|   |   |   |--- tenure_months >  -0.09
-|   |   |   |   |--- monthly_charges <= 2.12
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |   |--- monthly_charges >  2.12
-|   |   |   |   |   |--- truncated branch of depth 2
-|--- service_friction_index >  -0.23
-|   |--- contract_type_Month-to-month <= 0.50
-|   |   |--- service_friction_index <= 0.96
-|   |   |   |--- dissatisfaction_severity <= 0.79
-|   |   |   |   |--- service_friction_index <= 0.58
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |   |--- service_friction_index >  0.58
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |--- dissatisfaction_severity >  0.79
-|   |   |   |   |--- tenure_months <= -0.51
-|   |   |   |   |   |--- class: 1
-|   |   |   |   |--- tenure_months >  -0.51
-|   |   |   |   |   |--- truncated branch of depth 3
-|   |   |--- service_friction_index >  0.96
-|   |   |   |--- service_friction_index <= 1.40
-|   |   |   |   |--- tenure_months <= 0.52
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |   |--- tenure_months >  0.52
-|   |   |   |   |   |--- truncated branch of depth 5
-|   |   |   |--- service_friction_index >  1.40
-|   |   |   |   |--- dissatisfaction_severity <= 0.79
-|   |   |   |   |   |--- truncated branch of depth 5
-|   |   |   |   |--- dissatisfaction_severity >  0.79
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |--- contract_type_Month-to-month >  0.50
-|   |   |--- service_friction_index <= 0.20
-|   |   |   |--- tenure_months <= 1.25
-|   |   |   |   |--- satisfaction_rating <= 0.07
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |   |--- satisfaction_rating >  0.07
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |--- tenure_months >  1.25
-|   |   |   |   |--- tenure_months <= 1.45
-|   |   |   |   |   |--- truncated branch of depth 5
-|   |   |   |   |--- tenure_months >  1.45
-|   |   |   |   |   |--- truncated branch of depth 5
-|   |   |--- service_friction_index >  0.20
-|   |   |   |--- monthly_charges <= 1.65
-|   |   |   |   |--- estimated_salary <= -1.58
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |   |--- estimated_salary >  -1.58
-|   |   |   |   |   |--- truncated branch of depth 6
-|   |   |   |--- monthly_charges >  1.65
-|   |   |   |   |--- class: 1
+|--- tenure <= -0.68
+|   |--- TotalCharges <= -0.61
+|   |   |--- class: 0
+|   |--- TotalCharges >  -0.61
+|   |   |--- PaymentMethod_Electronic check <= 0.50
+|   |   |   |--- class: 1
+|   |   |--- PaymentMethod_Electronic check >  0.50
+|   |   |   |--- class: 1
+|--- tenure >  -0.68
+|   |--- tenure <= 0.40
+|   |   |--- has_partner_and_dependents <= 0.26
+|   |   |   |--- class: 0
+|   |   |--- has_partner_and_dependents >  0.26
+|   |   |   |--- class: 0
+|   |--- tenure >  0.40
+|   |   |--- TotalCharges <= -0.38
+|   |   |   |--- class: 1
+|   |   |--- TotalCharges >  -0.38
+|   |   |   |--- class: 0

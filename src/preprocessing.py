@@ -1,11 +1,6 @@
 """
-Preprocessing and feature engineering pipeline for the Maximized Accuracy Churn System (>= 98%).
-Covers all 4 core pillars plus domain synergy interaction metrics:
-1. Demographics: age, gender, num_dependents, city
-2. Usage Patterns: calls_made, sms_sent, data_used_gb, tenure_months
-3. Billing Info: contract_type, payment_method, monthly_charges, total_charges, estimated_salary
-4. Service Feedback: customer_service_calls, tech_support_tickets, satisfaction_rating, unresolved_complaints
-5. Domain Interactions: dissatisfaction_severity, service_friction_index
+Preprocessing and feature engineering pipeline for Telecom Customer Churn Prediction.
+Optimized for robust generalization across real-world customer account distributions.
 """
 
 import os
@@ -17,74 +12,146 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 
 NUMERICAL_FEATURES = [
-    "age",
-    "num_dependents",
-    "estimated_salary",
-    "calls_made",
-    "sms_sent",
-    "data_used_gb",
-    "tenure_months",
-    "monthly_charges",
-    "total_charges",
-    "customer_service_calls",
-    "tech_support_tickets",
-    "satisfaction_rating",
-    "unresolved_complaints",
-    "dissatisfaction_severity",
-    "service_friction_index",
+    "tenure",
+    "MonthlyCharges",
+    "TotalCharges",
+    "SeniorCitizen",
+    "charges_per_tenure",
+    "is_new_customer",
+    "is_long_tenure",
+    "services_count",
+    "has_partner_and_dependents",
+    "is_month_to_month",
 ]
 
 CATEGORICAL_FEATURES = [
-    "telecom_partner",
     "gender",
-    "city",
-    "contract_type",
-    "payment_method",
+    "Partner",
+    "Dependents",
+    "PhoneService",
+    "MultipleLines",
+    "InternetService",
+    "OnlineSecurity",
+    "OnlineBackup",
+    "DeviceProtection",
+    "TechSupport",
+    "StreamingTV",
+    "StreamingMovies",
+    "Contract",
+    "PaperlessBilling",
+    "PaymentMethod",
+    "tenure_group",
 ]
 
-def load_and_clean_data(csv_path=None, sample_size=None, random_state=42):
+def engineer_features(df_raw):
+    """
+    Applies domain feature engineering while remaining resilient to missing columns.
+    """
+    df = df_raw.copy()
+
+    # Column normalization (case-insensitive & alias-friendly)
+    col_map = {}
+    for col in df.columns:
+        c_clean = col.strip().lower().replace("_", "").replace(" ", "")
+        if c_clean == "gender": col_map[col] = "gender"
+        elif c_clean in ["seniorcitizen", "senior"]: col_map[col] = "SeniorCitizen"
+        elif c_clean == "partner": col_map[col] = "Partner"
+        elif c_clean in ["dependents", "numdependents"]: col_map[col] = "Dependents"
+        elif c_clean in ["tenure", "tenuremonths"]: col_map[col] = "tenure"
+        elif c_clean in ["monthlycharges", "monthlybill", "bill"]: col_map[col] = "MonthlyCharges"
+        elif c_clean in ["totalcharges", "totalbill"]: col_map[col] = "TotalCharges"
+        elif c_clean == "phoneservice": col_map[col] = "PhoneService"
+        elif c_clean == "multiplelines": col_map[col] = "MultipleLines"
+        elif c_clean in ["internetservice", "internet"]: col_map[col] = "InternetService"
+        elif c_clean == "onlinesecurity": col_map[col] = "OnlineSecurity"
+        elif c_clean == "onlinebackup": col_map[col] = "OnlineBackup"
+        elif c_clean == "deviceprotection": col_map[col] = "DeviceProtection"
+        elif c_clean in ["techsupport", "support"]: col_map[col] = "TechSupport"
+        elif c_clean == "streamingtv": col_map[col] = "StreamingTV"
+        elif c_clean == "streamingmovies": col_map[col] = "StreamingMovies"
+        elif c_clean in ["contract", "contracttype"]: col_map[col] = "Contract"
+        elif c_clean == "paperlessbilling": col_map[col] = "PaperlessBilling"
+        elif c_clean in ["paymentmethod", "payment"]: col_map[col] = "PaymentMethod"
+        elif c_clean in ["churn", "target"]: col_map[col] = "Churn"
+
+    df = df.rename(columns=col_map)
+
+    # Defaults for missing columns
+    if "gender" not in df: df["gender"] = "Male"
+    if "SeniorCitizen" not in df: df["SeniorCitizen"] = 0
+    if "Partner" not in df: df["Partner"] = "No"
+    if "Dependents" not in df: df["Dependents"] = "No"
+    if "tenure" not in df: df["tenure"] = 12
+    if "MonthlyCharges" not in df: df["MonthlyCharges"] = 500.0
+    if "TotalCharges" not in df: df["TotalCharges"] = df["MonthlyCharges"] * df["tenure"]
+    if "PhoneService" not in df: df["PhoneService"] = "Yes"
+    if "MultipleLines" not in df: df["MultipleLines"] = "No"
+    if "InternetService" not in df: df["InternetService"] = "Fiber optic"
+    if "OnlineSecurity" not in df: df["OnlineSecurity"] = "No"
+    if "OnlineBackup" not in df: df["OnlineBackup"] = "No"
+    if "DeviceProtection" not in df: df["DeviceProtection"] = "No"
+    if "TechSupport" not in df: df["TechSupport"] = "No"
+    if "StreamingTV" not in df: df["StreamingTV"] = "Yes"
+    if "StreamingMovies" not in df: df["StreamingMovies"] = "Yes"
+    if "Contract" not in df: df["Contract"] = "Month-to-month"
+    if "PaperlessBilling" not in df: df["PaperlessBilling"] = "Yes"
+    if "PaymentMethod" not in df: df["PaymentMethod"] = "Electronic check"
+
+    # Coerce numeric types
+    df["SeniorCitizen"] = pd.to_numeric(df["SeniorCitizen"], errors="coerce").fillna(0).astype(int)
+    df["tenure"] = pd.to_numeric(df["tenure"], errors="coerce").fillna(12).clip(lower=1)
+    df["MonthlyCharges"] = pd.to_numeric(df["MonthlyCharges"], errors="coerce").fillna(500.0).clip(lower=0)
+    df["TotalCharges"] = pd.to_numeric(df["TotalCharges"], errors="coerce").fillna(df["MonthlyCharges"] * df["tenure"]).clip(lower=0)
+
+    # Clean Contract
+    def normalize_contract(c):
+        c_str = str(c).lower()
+        if "two" in c_str or "2" in c_str:
+            return "Two year"
+        elif "one" in c_str or "1" in c_str:
+            return "One year"
+        return "Month-to-month"
+    df["Contract"] = df["Contract"].apply(normalize_contract)
+
+    # Feature engineering
+    df["charges_per_tenure"] = np.round(df["MonthlyCharges"] / (df["tenure"] + 1), 2)
+    df["is_new_customer"] = (df["tenure"] <= 6).astype(int)
+    df["is_long_tenure"] = (df["tenure"] >= 24).astype(int)
+    df["is_month_to_month"] = (df["Contract"] == "Month-to-month").astype(int)
+    df["has_partner_and_dependents"] = ((df["Partner"] == "Yes") & (df["Dependents"] == "Yes")).astype(int)
+
+    # Tenure group binning
+    df["tenure_group"] = pd.cut(
+        df["tenure"],
+        bins=[-1, 6, 12, 24, 48, 72, 1000],
+        labels=["0-6m", "7-12m", "13-24m", "25-48m", "49-72m", "72m+"]
+    ).astype(str)
+
+    # Count of active digital services
+    service_cols = [
+        "PhoneService", "MultipleLines", "OnlineSecurity", "OnlineBackup",
+        "DeviceProtection", "TechSupport", "StreamingTV", "StreamingMovies"
+    ]
+    count_series = pd.Series(0, index=df.index)
+    for sc in service_cols:
+        count_series += (df[sc] == "Yes").astype(int)
+    df["services_count"] = count_series
+
+    return df
+
+def load_and_clean_data(csv_path=None):
     if csv_path is None:
-        csv_path = os.path.join(
-            os.path.dirname(__file__), "..", "data", "telecom_churn_refined.csv"
-        )
-        if not os.path.exists(csv_path):
-            csv_path = os.path.join(
-                os.path.dirname(__file__), "..", "data", "telecom_churn.csv"
-            )
+        csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "telecom_churn.csv")
 
     if not os.path.exists(csv_path):
         raise FileNotFoundError(f"Dataset not found at {csv_path}")
 
     print(f"Loading dataset from: {csv_path}")
-    df = pd.read_csv(csv_path)
+    df_raw = pd.read_csv(csv_path)
+    df = engineer_features(df_raw)
 
-    if sample_size and len(df) > sample_size:
-        print(f"Sampling {sample_size:,} records from {len(df):,} total for optimized training speed...")
-        df = df.sample(n=sample_size, random_state=random_state).reset_index(drop=True)
-
-    # Ensure non-negative numbers
-    for col in ["calls_made", "sms_sent", "customer_service_calls", "tech_support_tickets", "monthly_charges"]:
-        if col in df.columns:
-            df[col] = df[col].clip(lower=0)
-
-    if "data_used_gb" not in df.columns and "data_used_mb" in df.columns:
-        df["data_used_gb"] = np.round(df["data_used_mb"].clip(lower=0) / 1024.0, 2)
-    elif "data_used_gb" not in df.columns and "data_used" in df.columns:
-        df["data_used_gb"] = np.round(df["data_used"].clip(lower=0) / 1024.0, 2)
-
-    if "total_charges" not in df.columns and "monthly_charges" in df.columns and "tenure_months" in df.columns:
-        df["total_charges"] = np.round(df["monthly_charges"] * df["tenure_months"], 2)
-
-    # Engineer high-leverage synergy features
-    sat = df.get("satisfaction_rating", 3)
-    calls = df.get("customer_service_calls", 1)
-    unres = df.get("unresolved_complaints", 0)
-
-    df["dissatisfaction_severity"] = (5 - sat) * (calls + 1)
-    df["service_friction_index"] = (calls * 2.0) + (unres * 3.5) - (sat * 1.5)
-
-    if "churn" in df.columns:
-        df["churn"] = df["churn"].astype(int)
+    if "Churn" in df.columns:
+        df["Churn"] = df["Churn"].apply(lambda v: 1 if str(v).strip().lower() in ["yes", "1", "true"] else 0).astype(int)
 
     return df
 
@@ -107,12 +174,12 @@ def build_preprocessor():
 
     return preprocessor
 
-def get_train_test_data(csv_path=None, test_size=0.2, random_state=42, sample_size=None):
-    df = load_and_clean_data(csv_path=csv_path, sample_size=sample_size, random_state=random_state)
+def get_train_test_data(csv_path=None, test_size=0.2, random_state=42):
+    df = load_and_clean_data(csv_path=csv_path)
 
-    feature_cols = NUMERICAL_FEATURES + CATEGORICAL_FEATURES
-    X = df[feature_cols].copy()
-    y = df["churn"].copy()
+    all_features = NUMERICAL_FEATURES + CATEGORICAL_FEATURES
+    X = df[all_features].copy()
+    y = df["Churn"].copy()
 
     X_train, X_test, y_train, y_test = train_test_split(
         X, y,
