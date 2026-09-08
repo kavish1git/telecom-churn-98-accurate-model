@@ -1,6 +1,8 @@
 """
 Vercel Serverless Function: FastAPI backend for Telecom Customer Churn Prediction.
-Loads the regularized Decision Tree Classifier (>= 88% Accuracy, Zero Overfitting).
+Supports:
+1. Account & Billing Churn Predictor (10k dataset, >= 88.9% Accuracy)
+2. Indian Telecom Experience & Survey Predictor (Jio/Airtel/Vi specific, >= 86.2% Accuracy)
 """
 
 import os
@@ -14,8 +16,8 @@ from typing import List, Optional, Dict, Any
 
 app = FastAPI(
     title="Telecom Churn Prediction API",
-    description="Serverless API powered by a regularized, non-overfitted Decision Tree Model (>= 88% Accuracy)",
-    version="4.0.0"
+    description="Serverless API for Account Churn and Indian Telecom Experience Surveys (Jio, Airtel, Vi)",
+    version="4.5.0"
 )
 
 app.add_middleware(
@@ -27,17 +29,33 @@ app.add_middleware(
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# 1. Load Primary Account Churn Model
 MODEL_PATHS = [
     os.path.join(BASE_DIR, "decision_tree_pipeline.joblib"),
     os.path.join(BASE_DIR, "..", "models", "decision_tree_pipeline.joblib"),
 ]
-
 model_pipeline = None
 for path in MODEL_PATHS:
     if os.path.exists(path):
         try:
             model_pipeline = joblib.load(path)
-            print(f"Loaded model successfully from: {path}")
+            print(f"Loaded primary model successfully from: {path}")
+            break
+        except Exception as e:
+            print(f"Failed loading from {path}: {e}")
+
+# 2. Load Survey Churn Model
+SURVEY_PATHS = [
+    os.path.join(BASE_DIR, "survey_churn_pipeline.joblib"),
+    os.path.join(BASE_DIR, "..", "models", "survey_churn_pipeline.joblib"),
+]
+survey_pipeline = None
+for path in SURVEY_PATHS:
+    if os.path.exists(path):
+        try:
+            survey_pipeline = joblib.load(path)
+            print(f"Loaded survey model successfully from: {path}")
             break
         except Exception as e:
             print(f"Failed loading from {path}: {e}")
@@ -165,18 +183,17 @@ def engineer_features_dict(raw: Dict[str, Any]) -> pd.DataFrame:
 def health_check():
     return {
         "status": "healthy",
-        "model_loaded": model_pipeline is not None,
-        "model_architecture": "Regularized Decision Tree (Zero Overfitting)",
-        "holdout_accuracy": "88.90%",
-        "generalization_gap": "0.05%",
-        "cross_val_auc": "0.9555",
+        "primary_model_loaded": model_pipeline is not None,
+        "survey_model_loaded": survey_pipeline is not None,
+        "primary_model_accuracy": "88.90%",
+        "survey_model_accuracy": "86.20%",
         "features_count": len(NUMERICAL_FEATURES + CATEGORICAL_FEATURES)
     }
 
 @app.post("/api/predict")
 def predict_churn(customer_data: Dict[str, Any]):
     if model_pipeline is None:
-        raise HTTPException(status_code=500, detail="Model artifact could not be loaded.")
+        raise HTTPException(status_code=500, detail="Primary model artifact could not be loaded.")
 
     X = engineer_features_dict(customer_data)
     pred_class = int(model_pipeline.predict(X)[0])
@@ -230,7 +247,7 @@ def predict_churn(customer_data: Dict[str, Any]):
 @app.post("/api/predict-batch")
 def predict_batch(records: List[Dict[str, Any]]):
     if model_pipeline is None:
-        raise HTTPException(status_code=500, detail="Model artifact could not be loaded.")
+        raise HTTPException(status_code=500, detail="Primary model artifact could not be loaded.")
 
     scored_records = []
     for r in records:
@@ -245,4 +262,115 @@ def predict_batch(records: List[Dict[str, Any]]):
     return {
         "total_scored": len(scored_records),
         "results": scored_records
+    }
+
+# -------------------------------------------------------------
+# INDIAN TELECOM SURVEY SPECIFIC INFERENCE
+# -------------------------------------------------------------
+RELIABILITY_MAP = {
+    "Very Reliable": 5, "Reliable": 4, "Neutral": 3, "Unreliable": 2, "Very Unreliable": 1,
+    5: 5, 4: 4, 3: 3, 2: 2, 1: 1
+}
+DROP_MAP = {
+    "None": 0, "1-3": 2, "4-7": 5, "8-15": 11, "More than 15": 18, "Not Stated": 2
+}
+
+SURVEY_NUM = ['reliability_streaming', 'reliability_video_calls', 'reliability_browsing', 'reliability_gaming', 'call_drops_count', 'quality_friction_index', 'value_friction_index']
+SURVEY_CAT = ['provider', 'network_type', 'plan_type', 'age_group', 'city', 'monthly_bill_range', 'monthly_data_range', 'call_drops_weekly']
+
+def engineer_survey_dict(raw: Dict[str, Any]) -> pd.DataFrame:
+    df = pd.DataFrame([raw])
+    if "provider" not in df: df["provider"] = "Jio"
+    if "network_type" not in df: df["network_type"] = "5G"
+    if "plan_type" not in df: df["plan_type"] = "Prepaid (monthly recharge)"
+    if "age_group" not in df: df["age_group"] = "18–24"
+    if "city" not in df: df["city"] = "Ahmedabad"
+    if "monthly_bill_range" not in df: df["monthly_bill_range"] = "200–499"
+    if "monthly_data_range" not in df: df["monthly_data_range"] = "21–50 GB"
+    if "call_drops_weekly" not in df: df["call_drops_weekly"] = "1-3"
+
+    for col in ["reliability_streaming", "reliability_video_calls", "reliability_browsing", "reliability_gaming"]:
+        val = df[col].iloc[0] if col in df else 4
+        df[col] = RELIABILITY_MAP.get(val, 4)
+
+    drops_str = str(df["call_drops_weekly"].iloc[0]).strip()
+    drops_count = DROP_MAP.get(drops_str, 2)
+    df["call_drops_count"] = drops_count
+
+    streaming = df["reliability_streaming"].iloc[0]
+    calls = df["reliability_video_calls"].iloc[0]
+    browsing = df["reliability_browsing"].iloc[0]
+    bill = str(df["monthly_bill_range"].iloc[0])
+
+    bill_burden = 1.5 if "1,500" in bill else (0.8 if "800" in bill else 0.0)
+    df["quality_friction_index"] = (drops_count * 0.4) + (5 - calls) * 1.2 + (5 - streaming) * 0.8
+    df["value_friction_index"] = bill_burden * 1.5 + (5 - browsing) * 0.6
+
+    return df[SURVEY_NUM + SURVEY_CAT]
+
+@app.post("/api/predict-survey")
+def predict_survey(survey_data: Dict[str, Any]):
+    if survey_pipeline is None:
+        raise HTTPException(status_code=500, detail="Survey model artifact could not be loaded.")
+
+    X = engineer_survey_dict(survey_data)
+    pred_class = int(survey_pipeline.predict(X)[0])
+    prob_churn = float(survey_pipeline.predict_proba(X)[0][1])
+
+    provider = str(survey_data.get("provider", "Jio"))
+    network = str(survey_data.get("network_type", "5G"))
+    drops = str(survey_data.get("call_drops_weekly", "1-3"))
+    plan = str(survey_data.get("plan_type", "Prepaid (monthly recharge)"))
+
+    if prob_churn >= 0.65:
+        tier = "Critical Risk"
+        color = "#d32f2f"
+    elif prob_churn >= 0.50:
+        tier = "High Risk"
+        color = "#f57c00"
+    elif prob_churn >= 0.35:
+        tier = "Moderate Risk"
+        color = "#fbc02d"
+    else:
+        tier = "Low Risk"
+        color = "#2e7d32"
+
+    recs = []
+    if "more than" in drops.lower() or "8-15" in drops:
+        recs.append(f"Network Priority: Frequent call drops ({drops} weekly). Trigger automated cell tower RF optimization ticket.")
+    if "month" in plan.lower():
+        recs.append("Plan Commitment: Customer on monthly recharge. Offer Rs. 50 cashback on 3-Month or 1-Year renewal.")
+    if network == "4G":
+        recs.append("5G Upgrade: Offer free 5G SIM upgrade with 50GB high-speed bonus data.")
+    if not recs:
+        recs.append(f"Healthy Subscriber: Loyal {provider} user. Target for 5G broadband / family plan.")
+
+    return {
+        "provider": provider,
+        "network_type": network,
+        "prediction": "Likely to Switch in 6 Months" if pred_class == 1 else "Likely to Stay (Loyal)",
+        "switch_probability": round(prob_churn * 100, 2),
+        "risk_tier": tier,
+        "badge_color": color,
+        "recommendations": recs
+    }
+
+@app.post("/api/predict-survey-batch")
+def predict_survey_batch(records: List[Dict[str, Any]]):
+    if survey_pipeline is None:
+        raise HTTPException(status_code=500, detail="Survey model artifact could not be loaded.")
+
+    results = []
+    for r in records:
+        res = predict_survey(r)
+        merged = dict(r)
+        merged["Switch_Prediction_6Mo"] = res["prediction"]
+        merged["Switch_Probability_Pct"] = res["switch_probability"]
+        merged["Risk_Tier"] = res["risk_tier"]
+        merged["Action_Plan"] = res["recommendations"][0] if res["recommendations"] else "Maintain standard service"
+        results.append(merged)
+
+    return {
+        "total_scored": len(results),
+        "results": results
     }

@@ -1,0 +1,27 @@
+{
+    "model_name": "Indian Telecom Survey Experience Churn Model",
+    "train_samples": 8000,
+    "test_samples": 2000,
+    "test_accuracy": 0.862,
+    "roc_auc": 0.9504,
+    "generalization_gap": 0.0085,
+    "num_cols": [
+        "reliability_streaming",
+        "reliability_video_calls",
+        "reliability_browsing",
+        "reliability_gaming",
+        "call_drops_count",
+        "quality_friction_index",
+        "value_friction_index"
+    ],
+    "cat_cols": [
+        "provider",
+        "network_type",
+        "plan_type",
+        "age_group",
+        "city",
+        "monthly_bill_range",
+        "monthly_data_range",
+        "call_drops_weekly"
+    ]
+}

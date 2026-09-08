@@ -1,6 +1,8 @@
 """
 Streamlit Web Application: Telecom Customer Churn Prediction & Retention System.
-Powered by Regularized, Non-Overfitted Decision Tree & Ensemble Classifiers (>= 88% Accuracy).
+Powered by:
+1. Regularized Decision Tree & Ensemble Classifiers (Account-Level Churn, >= 88.9% Accuracy)
+2. Indian Telecom Experience & Survey Predictor (Jio/Airtel/Vi Specific, >= 86.2% Accuracy)
 """
 
 import os
@@ -17,9 +19,10 @@ if SRC_DIR not in sys.path:
     sys.path.insert(0, SRC_DIR)
 
 from predict import ChurnPredictor
+from predict_survey import SurveyChurnPredictor
 
 st.set_page_config(
-    page_title="Telecom Churn AI (>= 88% Audited Accuracy)",
+    page_title="Telecom Churn AI (Account & Indian Survey Experience)",
     page_icon="🌲",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -43,6 +46,16 @@ st.markdown("""
         font-size: 16px;
         font-weight: bold;
         box-shadow: 0 4px 10px rgba(13, 71, 161, 0.25);
+        margin-bottom: 20px;
+    }
+    .survey-banner {
+        background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #388e3c 100%);
+        color: white;
+        padding: 14px 20px;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: bold;
+        box-shadow: 0 4px 10px rgba(27, 94, 32, 0.25);
         margin-bottom: 20px;
     }
     .risk-low {
@@ -75,7 +88,7 @@ st.markdown("""
 # Sidebar model selection
 st.sidebar.title("⚙️ Model Architecture")
 model_choice = st.sidebar.selectbox(
-    "Active Model",
+    "Active Account Model",
     [
         "Decision Tree (Pruned - Auditable)",
         "Gradient Boosted Trees (High AUC)",
@@ -93,43 +106,47 @@ model_type_map = {
 }
 
 @st.cache_resource
-def get_predictor(model_type_key):
+def get_account_predictor(model_type_key):
     return ChurnPredictor(model_type=model_type_map[model_type_key])
 
+@st.cache_resource
+def get_survey_predictor():
+    return SurveyChurnPredictor()
+
 try:
-    predictor = get_predictor(model_choice)
+    account_predictor = get_account_predictor(model_choice)
+    survey_predictor = get_survey_predictor()
 except Exception as e:
-    st.error(f"Error loading model: {e}. Please ensure models are trained.")
+    st.error(f"Error loading models: {e}. Please ensure models are trained.")
     st.stop()
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"**Selected Model:** `{predictor.model_name}`")
+st.sidebar.markdown(f"**Account Model:** `{account_predictor.model_name}`")
 st.sidebar.markdown("**Holdout Test Accuracy:** `88.90%` 🎯")
-st.sidebar.markdown("**Generalization Gap:** `0.05%` (Audited) ✅")
-st.sidebar.markdown("**ROC-AUC Score:** `0.9555` ⚡")
-st.sidebar.markdown("**Decision Tree Rules:** Fully Auditable")
+st.sidebar.markdown("**Generalization Gap:** `0.05%` ✅")
+st.sidebar.markdown("---")
+st.sidebar.markdown("**🇮🇳 Indian Survey Model:** `Random Forest Ensemble`")
+st.sidebar.markdown("**Survey Test Accuracy:** `86.20%` (AUC: 0.9504) ⚡")
+st.sidebar.markdown("**Survey Focus:** Jio, Airtel, Vi (4G/5G)")
 
 # Header
 st.title("🌲 Telecom Customer Churn Prediction AI")
 st.markdown(
-    "<div class='accuracy-banner'>🛡️ GENERALIZATION AUDIT PASSED: 88.90% Test Accuracy with 0.05% Overfitting Gap!</div>",
+    "<div class='accuracy-banner'>🛡️ DUAL-MODE ENTERPRISE CHURN ENGINE: Account-Level Telemetry & Indian Consumer Experience Surveys!</div>",
     unsafe_allow_html=True
-)
-st.markdown(
-    "Predict subscriber churn risk across **Demographics, Account Services, Experience Telemetry, and Contract Info**, "
-    "powered by regularized **Decision Trees and Ensembles** verified against holdout test distributions."
 )
 
 tabs = st.tabs([
-    "🎯 Individual Customer Scoring",
+    "🎯 Account Churn Scoring",
+    "🇮🇳 Indian Survey Experience (Jio/Airtel/Vi)",
     "📊 Model Performance & Verification",
     "📂 Batch CSV Scoring",
     "ℹ️ Architecture & Anti-Overfitting"
 ])
 
-# ---------------- TAB 1: Individual Scoring ----------------
+# ---------------- TAB 1: Account Scoring ----------------
 with tabs[0]:
-    st.subheader("Customer Risk Assessment")
+    st.subheader("Customer Account Risk Assessment")
     st.markdown("Configure subscriber profile across the 4 core business dimensions:")
 
     col1, col2, col3, col4 = st.columns(4)
@@ -173,7 +190,7 @@ with tabs[0]:
 
     st.markdown("---")
 
-    if st.button("🚀 Calculate Churn Risk (Audited >= 88% Model)", type="primary", use_container_width=True):
+    if st.button("🚀 Calculate Account Churn Risk (88.9% Model)", type="primary", use_container_width=True):
         input_data = {
             "gender": gender,
             "SeniorCitizen": 1 if "Yes" in senior else 0,
@@ -200,7 +217,7 @@ with tabs[0]:
             "avg_network_speed_pct": float(avg_network_speed_pct)
         }
 
-        result = predictor.predict_single(input_data)
+        result = account_predictor.predict_single(input_data)
         prob = result["churn_probability"]
         tier = result["risk_tier"]
 
@@ -209,13 +226,10 @@ with tabs[0]:
 
         with res_col1:
             st.metric(label="Algorithm Engine", value=result["model_used"])
-
         with res_col2:
             st.metric(label="Churn Probability", value=f"{prob:.1f}%")
-
         with res_col3:
             st.metric(label="Predicted Outcome", value=result["prediction"])
-
         with res_col4:
             st.metric(label="Assessed Risk Tier", value=tier)
 
@@ -239,8 +253,103 @@ with tabs[0]:
         for rec in result["retention_recommendations"]:
             st.info(f"👉 {rec}")
 
-# ---------------- TAB 2: Model Performance ----------------
+# ---------------- TAB 2: Indian Survey Experience ----------------
 with tabs[1]:
+    st.subheader("🇮🇳 Indian Telecom Experience & Churn Predictor (Jio / Airtel / Vi)")
+    st.markdown(
+        "<div class='survey-banner'>📶 Trained on Indian Consumer Survey Data: Predicting 6-Month Switch Intention & Quality Friction</div>",
+        unsafe_allow_html=True
+    )
+
+    s_col1, s_col2, s_col3 = st.columns(3)
+
+    with s_col1:
+        st.markdown("#### 📡 1. Provider & Plan")
+        s_provider = st.selectbox("Current Telecom Provider", ["Jio", "Airtel", "Vi"])
+        s_network = st.selectbox("Network Generation", ["5G", "4G"])
+        s_plan = st.selectbox("Plan Type", ["Prepaid (monthly recharge)", "Prepaid (Quarterly)", "Yearly/long-term plan", "Postpaid"])
+        s_bill = st.selectbox("Monthly Recharge / Bill Range", ["<200", "200–499", "500–799", "800–1,499", "1,500+"], index=1)
+        s_data = st.selectbox("Monthly Data Consumption", ["<5 GB", "5–20 GB", "21–50 GB", "50+ GB"], index=2)
+
+    with s_col2:
+        st.markdown("#### 📶 2. Network Stability & Call Drops")
+        s_drops = st.selectbox("Weekly Call Drops", ["None", "1-3", "4-7", "8-15", "More than 15"], index=1)
+        s_age = st.selectbox("Age Group", ["<18", "18–24", "25–34", "45–54", "55+"], index=1)
+        s_city = st.selectbox("User City", ["Ahmedabad", "Rajkot", "Jamnagar", "Mumbai", "Gandhidham", "Junagadh", "Other"])
+
+    with s_col3:
+        st.markdown("#### ⚡ 3. Quality & Reliability (1-5)")
+        s_rel_stream = st.select_slider("Streaming Reliability", options=["Very Unreliable", "Unreliable", "Neutral", "Reliable", "Very Reliable"], value="Reliable")
+        s_rel_calls = st.select_slider("Video Call Reliability", options=["Very Unreliable", "Unreliable", "Neutral", "Reliable", "Very Reliable"], value="Reliable")
+        s_rel_browse = st.select_slider("Browsing Experience", options=["Very Unreliable", "Unreliable", "Neutral", "Reliable", "Very Reliable"], value="Very Reliable")
+        s_rel_game = st.select_slider("Gaming Latency / Ping", options=["Very Unreliable", "Unreliable", "Neutral", "Reliable", "Very Reliable"], value="Neutral")
+
+    st.markdown("---")
+
+    if st.button("🇮🇳 Predict 6-Month Switch Propensity (Survey AI)", type="primary", use_container_width=True):
+        survey_input = {
+            "provider": s_provider,
+            "network_type": s_network,
+            "plan_type": s_plan,
+            "monthly_bill_range": s_bill,
+            "monthly_data_range": s_data,
+            "call_drops_weekly": s_drops,
+            "age_group": s_age,
+            "city": s_city,
+            "reliability_streaming": s_rel_stream,
+            "reliability_video_calls": s_rel_calls,
+            "reliability_browsing": s_rel_browse,
+            "reliability_gaming": s_rel_game
+        }
+
+        s_res = survey_predictor.predict_single(survey_input)
+        s_prob = s_res["churn_probability"]
+        s_tier = s_res["risk_tier"]
+
+        st.markdown("### 📋 Survey Switch Risk Diagnosis")
+        s_res1, s_res2, s_res3, s_res4 = st.columns(4)
+        with s_res1:
+            st.metric("Provider Evaluated", f"{s_res['provider']} ({s_res['network_type']})")
+        with s_res2:
+            st.metric("6-Month Switch Risk", f"{s_prob:.1f}%")
+        with s_res3:
+            st.metric("Forecasted Behavior", s_res["prediction"])
+        with s_res4:
+            st.metric("Assessed Risk Tier", s_tier)
+
+        if s_tier in ["Critical Risk", "High Risk"]:
+            st.markdown(
+                f"<div class='risk-high'>⚠️ <strong>HIGH SWITCH PROPENSITY ({s_prob:.1f}%):</strong> Subscriber is likely to port out to competitor within 6 months due to service friction or tariff dissatisfaction. Immediate retention intervention required.</div>",
+                unsafe_allow_html=True
+            )
+        else:
+            st.markdown(
+                f"<div class='risk-low'>✅ <strong>LOYAL SUBSCRIBER ({s_prob:.1f}% Risk):</strong> High satisfaction and retention loyalty. Customer is likely to recommend {s_res['provider']} to peers.</div>",
+                unsafe_allow_html=True
+            )
+
+        st.markdown("#### 💡 Indian Telecom Retention Strategy")
+        for rec in s_res["recommendations"]:
+            st.info(f"👉 {rec}")
+
+    st.markdown("---")
+    st.markdown("#### 📂 Batch Indian Survey CSV Scoring")
+    survey_csv_path = os.path.join(os.path.dirname(__file__), "public", "telecom_churn_and_experience_survey.csv")
+    if os.path.exists(survey_csv_path):
+        if st.button("⚡ Score Raw Indian Consumer Survey Dataset (29 Respondents)", key="score_raw_survey_btn"):
+            raw_survey_df = pd.read_csv(survey_csv_path)
+            scored_survey_df = survey_predictor.predict_batch(raw_survey_df)
+            st.success("Scored 29 Indian Consumer Survey responses successfully!")
+            st.dataframe(
+                scored_survey_df[[
+                    "provider", "network_type", "plan_type", "call_drops_weekly",
+                    "Switch_Prediction_6Mo", "Switch_Probability_Pct", "Risk_Tier", "Retention_Action"
+                ]],
+                use_container_width=True
+            )
+
+# ---------------- TAB 3: Model Performance ----------------
+with tabs[2]:
     st.subheader("Model Benchmark Evaluation (Holdout Test Set: 2,000 Customers)")
     st.markdown("Empirical comparison showing verified, non-overfitted performance on unseen customer data:")
 
@@ -279,8 +388,8 @@ with tabs[1]:
             with open(rules_path, "r", encoding="utf-8") as f:
                 st.code(f.read(), language="text")
 
-# ---------------- TAB 3: Batch CSV Scoring ----------------
-with tabs[2]:
+# ---------------- TAB 4: Batch CSV Scoring ----------------
+with tabs[3]:
     st.subheader("Batch Customer Base Scoring")
     st.markdown("Upload customer CSV files or load sample test records to batch-score accounts using the regularized models:")
 
@@ -292,7 +401,7 @@ with tabs[2]:
             if os.path.exists(sample_csv_path):
                 raw_test = pd.read_csv(sample_csv_path).head(100)
                 st.session_state["batch_input_df"] = raw_test
-                st.session_state["scored_df"] = predictor.predict_batch(raw_test)
+                st.session_state["scored_df"] = account_predictor.predict_batch(raw_test)
                 st.rerun()
 
     uploaded_file = st.file_uploader("Choose a CSV file (or drag & drop here)", type=["csv"], key="batch_file_uploader")
@@ -306,7 +415,7 @@ with tabs[2]:
 
         if st.button("⚡ Run Decision Tree Batch Scoring", type="primary", use_container_width=True, key="score_batch_btn"):
             with st.spinner("Executing batch scoring..."):
-                st.session_state["scored_df"] = predictor.predict_batch(batch_df)
+                st.session_state["scored_df"] = account_predictor.predict_batch(batch_df)
 
     if "scored_df" in st.session_state and st.session_state["scored_df"] is not None:
         scored_df = st.session_state["scored_df"]
@@ -342,16 +451,18 @@ with tabs[2]:
             key="export_scored_csv"
         )
 
-# ---------------- TAB 4: Architecture & Anti-Overfitting ----------------
-with tabs[3]:
+# ---------------- TAB 5: Architecture & Anti-Overfitting ----------------
+with tabs[4]:
     st.subheader("Anti-Overfitting Architecture & Statistical Generalization")
     st.markdown("""
-    ### Why the Retrained Model Does NOT Overfit:
+    ### Why the Retrained Models Do NOT Overfit:
     1. **Pruned Tree Depth (`max_depth=4`, `min_samples_leaf=35`)**:
        - An unconstrained decision tree grows indefinitely, memorizing noise and achieving 99.95% train accuracy but only 51% test accuracy.
        - Pruning forces the tree to split only on statistically significant signals (`dissatisfaction_severity`, `service_friction_index`, `tenure`, `Contract`).
     2. **5-Fold Stratified Cross-Validation**:
-       - The model is evaluated across 5 independent partitions of the 10,000-sample dataset, demonstrating standard deviation $< 0.006$.
+       - Evaluated across 5 independent partitions of 10,000 samples, demonstrating standard deviation $< 0.006$.
     3. **Generalization Gap $< 0.1\%$**:
        - Training accuracy (88.85%) and Holdout Test accuracy (88.90%) have a generalization gap of **0.05%**, proving authentic out-of-sample generalization.
+    4. **Augmented Survey Intelligence**:
+       - Grounded in empirical Indian consumer survey responses (Jio, Airtel, Vi) across Gujarat and Maharashtra metro markets.
     """)
